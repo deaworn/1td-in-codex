@@ -157,9 +157,13 @@ function closestPointOnSegment(p, a, b) {
 }
 
 function handleCanvasClick(evt) {
-  const rect = canvas.getBoundingClientRect();
-  const x = evt.clientX - rect.left;
-  const y = evt.clientY - rect.top;
+const rect = canvas.getBoundingClientRect();
+const scaleX = canvas.width / rect.width;
+const scaleY = canvas.height / rect.height;
+
+const x = (evt.clientX - rect.left) * scaleX;
+const y = (evt.clientY - rect.top) * scaleY;
+
   const cell = {
     x: Math.floor(x / gridSize) * gridSize + gridSize / 2,
     y: Math.floor(y / gridSize) * gridSize + gridSize / 2,
