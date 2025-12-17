@@ -114,19 +114,27 @@ function spawnWave() {
   if (!wave) return;
   const spawnInterval = 0.85;
   let spawned = 0;
+  const scaling = Math.pow(1.08, state.wave);
 
   const spawn = () => {
     if (!running || spawned >= wave.count) return;
+    const isElite = state.wave >= 1 && (spawned + 1) % 3 === 0;
+    const baseHp = Math.round(wave.hp * scaling * (isElite ? 1.6 : 1));
+    const baseReward = Math.round(wave.reward * scaling * (isElite ? 1.8 : 1));
     const enemy = {
       x: path[0].x,
       y: path[0].y,
-      hp: wave.hp,
-      maxHp: wave.hp,
-      speed: wave.speed,
-      reward: wave.reward,
+      hp: baseHp,
+      maxHp: baseHp,
+      speed: wave.speed * (isElite ? 0.9 : 1),
+      reward: baseReward,
       progress: 0,
       pathIndex: 0,
       slowTimer: 0,
+      elite: isElite,
+      radius: isElite ? 15 : 12,
+      color: isElite ? "#ff6bd6" : "#ffb347",
+      hpBarHeight: isElite ? 8 : 6,
     };
     enemies.push(enemy);
     spawned += 1;
@@ -157,13 +165,9 @@ function closestPointOnSegment(p, a, b) {
 }
 
 function handleCanvasClick(evt) {
-const rect = canvas.getBoundingClientRect();
-const scaleX = canvas.width / rect.width;
-const scaleY = canvas.height / rect.height;
-
-const x = (evt.clientX - rect.left) * scaleX;
-const y = (evt.clientY - rect.top) * scaleY;
-
+  const rect = canvas.getBoundingClientRect();
+  const x = evt.clientX - rect.left;
+  const y = evt.clientY - rect.top;
   const cell = {
     x: Math.floor(x / gridSize) * gridSize + gridSize / 2,
     y: Math.floor(y / gridSize) * gridSize + gridSize / 2,
@@ -248,7 +252,7 @@ function update(delta) {
     proj.x += proj.vx * delta;
     proj.y += proj.vy * delta;
     proj.life -= delta;
-    const hit = enemies.find((e) => distance(e, proj) < 12);
+    const hit = enemies.find((e) => distance(e, proj) < e.radius);
     if (hit) {
       hit.hp -= proj.damage;
       if (proj.slow) {
@@ -337,14 +341,24 @@ function draw() {
   });
 
   enemies.forEach((enemy) => {
-    ctx.fillStyle = "#ffb347";
+    ctx.fillStyle = enemy.color;
     ctx.beginPath();
-    ctx.arc(enemy.x, enemy.y, 12, 0, Math.PI * 2);
+    ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = "#0f1324";
-    ctx.fillRect(enemy.x - 16, enemy.y - 18, 32, 6);
+    ctx.fillRect(
+      enemy.x - 16,
+      enemy.y - (enemy.radius + enemy.hpBarHeight),
+      32,
+      enemy.hpBarHeight
+    );
     ctx.fillStyle = enemy.hp / enemy.maxHp < 0.35 ? "#ff7b7b" : "#4ad991";
-    ctx.fillRect(enemy.x - 16, enemy.y - 18, (enemy.hp / enemy.maxHp) * 32, 6);
+    ctx.fillRect(
+      enemy.x - 16,
+      enemy.y - (enemy.radius + enemy.hpBarHeight),
+      (enemy.hp / enemy.maxHp) * 32,
+      enemy.hpBarHeight
+    );
   });
 
   projectiles.forEach((proj) => {
