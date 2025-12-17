@@ -8,6 +8,7 @@ const nextWaveBtn = document.getElementById("next-wave");
 const resetBtn = document.getElementById("reset");
 
 const gridSize = 40;
+const towerRadius = 14;
 
 const path = [
   { x: 40, y: 80 },
@@ -164,7 +165,7 @@ function handleCanvasClick(evt) {
     y: Math.floor(y / gridSize) * gridSize + gridSize / 2,
   };
 
-  const clickedTower = towers.find((tower) => distance(tower, { x, y }) <= 14);
+  const clickedTower = towers.find((tower) => distance(tower, { x, y }) <= towerRadius);
   if (clickedTower) {
     selectedTower = clickedTower;
     draw();
@@ -320,7 +321,7 @@ function draw() {
   towers.forEach((tower) => {
     ctx.fillStyle = tower.color;
     ctx.beginPath();
-    ctx.arc(tower.x, tower.y, 14, 0, Math.PI * 2);
+    ctx.arc(tower.x, tower.y, towerRadius, 0, Math.PI * 2);
     ctx.fill();
 
     if (tower === selectedTower) {
