@@ -71,6 +71,7 @@ let towers;
 let enemies;
 let running = false;
 let activeTower = towerTypes[0];
+let selectedTower = null;
 let lastTime = performance.now();
 
 function resetGame() {
@@ -83,6 +84,7 @@ function resetGame() {
   projectiles = [];
   towers = [];
   enemies = [];
+  selectedTower = null;
   running = false;
   logEl.innerHTML = "";
   appendLog("Játék visszaállítva. Helyezz el tornyokat és indítsd a hullámot!");
@@ -153,7 +155,7 @@ function closestPointOnSegment(p, a, b) {
   return { x: a.x + ab.x * t, y: a.y + ab.y * t };
 }
 
-function placeTower(evt) {
+function handleCanvasClick(evt) {
   const rect = canvas.getBoundingClientRect();
   const x = evt.clientX - rect.left;
   const y = evt.clientY - rect.top;
@@ -161,6 +163,15 @@ function placeTower(evt) {
     x: Math.floor(x / gridSize) * gridSize + gridSize / 2,
     y: Math.floor(y / gridSize) * gridSize + gridSize / 2,
   };
+
+  const clickedTower = towers.find((tower) => distance(tower, { x, y }) <= 14);
+  if (clickedTower) {
+    selectedTower = clickedTower;
+    draw();
+    return;
+  }
+
+  selectedTower = null;
 
   if (!canPlaceTower(cell)) {
     appendLog("Nem helyezhetsz tornyot a pályára vagy közvetlen mellé.");
@@ -311,10 +322,13 @@ function draw() {
     ctx.beginPath();
     ctx.arc(tower.x, tower.y, 14, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = `${tower.color}22`;
-    ctx.beginPath();
-    ctx.arc(tower.x, tower.y, tower.range, 0, Math.PI * 2);
-    ctx.stroke();
+
+    if (tower === selectedTower) {
+      ctx.strokeStyle = `${tower.color}22`;
+      ctx.beginPath();
+      ctx.arc(tower.x, tower.y, tower.range, 0, Math.PI * 2);
+      ctx.stroke();
+    }
   });
 
   enemies.forEach((enemy) => {
@@ -402,13 +416,13 @@ function nextWave() {
   updateStats();
 }
 
-function init() {
-  buildTowerGrid();
-  resetGame();
-  canvas.addEventListener("click", placeTower);
-  startBtn.addEventListener("click", () => {
-    if (!running) startGame();
-  });
+  function init() {
+    buildTowerGrid();
+    resetGame();
+    canvas.addEventListener("click", handleCanvasClick);
+    startBtn.addEventListener("click", () => {
+      if (!running) startGame();
+    });
   nextWaveBtn.addEventListener("click", nextWave);
   resetBtn.addEventListener("click", resetGame);
   animate();
