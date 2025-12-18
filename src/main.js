@@ -9,7 +9,7 @@ const resetBtn = document.getElementById("reset");
 const versionEl = document.getElementById("version");
 const towerActionsEl = document.getElementById("tower-actions");
 
-const GAME_VERSION = "v0.6.0";
+const GAME_VERSION = "v0.4.0";
 const CANVAS_WIDTH = 960;
 const CANVAS_HEIGHT = 640;
 const gridSize = 40;
@@ -466,6 +466,7 @@ function drawPath() {
 
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const time = performance.now() / 1000;
   drawGrid();
   drawPath();
 
@@ -494,10 +495,35 @@ function draw() {
     }
 
     if (tower === selectedTower) {
-      ctx.strokeStyle = `${tower.color}22`;
+      const pulse = 0.6 + 0.4 * Math.sin(time * 2.2);
+
+      ctx.save();
+      ctx.globalAlpha = 0.6 + pulse * 0.2;
+      ctx.strokeStyle = `${tower.color}cc`;
+      ctx.lineWidth = 4.5;
+      ctx.shadowColor = `${tower.color}aa`;
+      ctx.shadowBlur = 16 + pulse * 6;
+      ctx.beginPath();
+      ctx.arc(tower.x, tower.y, towerRadius + 5 + pulse * 3, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+
+      ctx.save();
+      ctx.globalAlpha = 0.22 + pulse * 0.12;
+      ctx.fillStyle = `${tower.color}33`;
+      ctx.beginPath();
+      ctx.arc(tower.x, tower.y, towerRadius + 10 + pulse * 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      ctx.save();
+      ctx.globalAlpha = 0.18;
+      ctx.strokeStyle = `${tower.color}66`;
+      ctx.lineWidth = 2.5;
       ctx.beginPath();
       ctx.arc(tower.x, tower.y, tower.range, 0, Math.PI * 2);
       ctx.stroke();
+      ctx.restore();
     }
   });
 
