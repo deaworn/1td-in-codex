@@ -9,7 +9,7 @@ const resetBtn = document.getElementById("reset");
 const versionEl = document.getElementById("version");
 const towerActionsEl = document.getElementById("tower-actions");
 
-const GAME_VERSION = "v0.4.0";
+const GAME_VERSION = "v0.4.1";
 const CANVAS_WIDTH = 960;
 const CANVAS_HEIGHT = 640;
 const gridSize = 40;
@@ -240,6 +240,13 @@ function handleCanvasClick(evt) {
   const clickedTower = towers.find((tower) => distance(tower, cell) <= selectionRadius);
   if (clickedTower) {
     selectedTower = clickedTower;
+    updateTowerActions();
+    draw();
+    return;
+  }
+
+  if (selectedTower) {
+    selectedTower = null;
     updateTowerActions();
     draw();
     return;
