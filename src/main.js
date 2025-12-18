@@ -8,7 +8,7 @@ const nextWaveBtn = document.getElementById("next-wave");
 const resetBtn = document.getElementById("reset");
 const versionEl = document.getElementById("version");
 
-const GAME_VERSION = "v0.2.0";
+const GAME_VERSION = "v0.2.2";
 const CANVAS_WIDTH = 960;
 const CANVAS_HEIGHT = 640;
 const gridSize = 40;
@@ -81,6 +81,7 @@ let damageTexts;
 let running = false;
 let activeTower = towerTypes[0];
 let selectedTower = null;
+let hoverCell = null;
 let lastTime = performance.now();
 
 function resetGame() {
@@ -95,6 +96,7 @@ function resetGame() {
   enemies = [];
   damageTexts = [];
   selectedTower = null;
+  hoverCell = null;
   running = false;
   logEl.innerHTML = "";
   appendLog("Játék visszaállítva. Helyezz el tornyokat és indítsd a hullámot!");
@@ -173,16 +175,20 @@ function closestPointOnSegment(p, a, b) {
   return { x: a.x + ab.x * t, y: a.y + ab.y * t };
 }
 
-function handleCanvasClick(evt) {
+function getCellFromEvent(evt) {
   const rect = canvas.getBoundingClientRect();
   const scaleX = canvas.width / rect.width;
   const scaleY = canvas.height / rect.height;
   const x = (evt.clientX - rect.left) * scaleX;
   const y = (evt.clientY - rect.top) * scaleY;
-  const cell = {
+  return {
     x: Math.floor(x / gridSize) * gridSize + gridSize / 2,
     y: Math.floor(y / gridSize) * gridSize + gridSize / 2,
   };
+}
+
+function handleCanvasClick(evt) {
+  const cell = getCellFromEvent(evt);
 
   const selectionRadius = Math.max(gridSize / 2, towerRadius);
   const clickedTower = towers.find((tower) => distance(tower, cell) <= selectionRadius);
@@ -206,6 +212,14 @@ function handleCanvasClick(evt) {
   state.money -= activeTower.cost;
   appendLog(`${activeTower.name} lerakva (${cell.x}, ${cell.y}).`);
   updateStats();
+}
+
+function handleCanvasMouseMove(evt) {
+  hoverCell = activeTower ? getCellFromEvent(evt) : null;
+}
+
+function handleCanvasMouseLeave() {
+  hoverCell = null;
 }
 
 function update(delta) {
@@ -353,6 +367,8 @@ function draw() {
   drawGrid();
   drawPath();
 
+  drawHoverPreview();
+
   towers.forEach((tower) => {
     ctx.fillStyle = tower.color;
     ctx.beginPath();
@@ -405,6 +421,27 @@ function draw() {
     ctx.arc(proj.x, proj.y, 4, 0, Math.PI * 2);
     ctx.fill();
   });
+}
+
+function drawHoverPreview() {
+  if (!hoverCell || !activeTower) return;
+  const isValid = canPlaceTower(hoverCell);
+
+  ctx.save();
+  ctx.fillStyle = isValid ? "rgba(255, 255, 255, 0.08)" : "rgba(255, 99, 99, 0.16)";
+  ctx.strokeStyle = isValid ? "rgba(255, 255, 255, 0.18)" : "rgba(255, 99, 99, 0.4)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.rect(hoverCell.x - gridSize / 2, hoverCell.y - gridSize / 2, gridSize, gridSize);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.globalAlpha = 0.4;
+  ctx.fillStyle = isValid ? activeTower.color : "#ff7b7b";
+  ctx.beginPath();
+  ctx.arc(hoverCell.x, hoverCell.y, towerRadius, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
 }
 
 function animate() {
@@ -478,6 +515,8 @@ function init() {
   buildTowerGrid();
   resetGame();
   canvas.addEventListener("click", handleCanvasClick);
+  canvas.addEventListener("mousemove", handleCanvasMouseMove);
+  canvas.addEventListener("mouseleave", handleCanvasMouseLeave);
   startBtn.addEventListener("click", () => {
     if (!running) startGame();
     });
