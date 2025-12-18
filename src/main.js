@@ -9,7 +9,7 @@ const resetBtn = document.getElementById("reset");
 const versionEl = document.getElementById("version");
 const towerActionsEl = document.getElementById("tower-actions");
 
-const GAME_VERSION = "v0.4.1";
+const GAME_VERSION = "v0.4.2";
 const CANVAS_WIDTH = 960;
 const CANVAS_HEIGHT = 640;
 const gridSize = 40;
@@ -245,42 +245,37 @@ function handleCanvasClick(evt) {
     return;
   }
 
-  if (selectedTower) {
-    selectedTower = null;
+  const canAttemptPlacement = !selectedTower && activeTower && canPlaceTower(cell);
+  if (canAttemptPlacement) {
+    if (state.money < activeTower.cost) {
+      appendLog("Nincs elég kredited ehhez a toronyhoz.");
+      return;
+    }
+    towers.push({
+      ...cell,
+      ...activeTower,
+      cooldown: 0,
+      level: 1,
+      baseDamage: activeTower.damage,
+      baseCost: activeTower.cost,
+      baseRange: activeTower.range,
+      baseFireRate: activeTower.fireRate,
+      baseProjectileSpeed: activeTower.projectileSpeed,
+      baseSlow: activeTower.slow,
+      baseSlowTime: activeTower.slowTime,
+      multiShot: activeTower.multiShot || 1,
+    });
+    state.money -= activeTower.cost;
+    appendLog(`${activeTower.name} lerakva (${cell.x}, ${cell.y}).`);
+    updateStats();
     updateTowerActions();
-    draw();
     return;
   }
 
   selectedTower = null;
+  hoverCell = null;
   updateTowerActions();
-
-  if (!canPlaceTower(cell)) {
-    appendLog("Nem helyezhetsz tornyot a pályára vagy közvetlen mellé.");
-    return;
-  }
-  if (state.money < activeTower.cost) {
-    appendLog("Nincs elég kredited ehhez a toronyhoz.");
-    return;
-  }
-  towers.push({
-    ...cell,
-    ...activeTower,
-    cooldown: 0,
-    level: 1,
-    baseDamage: activeTower.damage,
-    baseCost: activeTower.cost,
-    baseRange: activeTower.range,
-    baseFireRate: activeTower.fireRate,
-    baseProjectileSpeed: activeTower.projectileSpeed,
-    baseSlow: activeTower.slow,
-    baseSlowTime: activeTower.slowTime,
-    multiShot: activeTower.multiShot || 1,
-  });
-  state.money -= activeTower.cost;
-  appendLog(`${activeTower.name} lerakva (${cell.x}, ${cell.y}).`);
-  updateStats();
-  updateTowerActions();
+  draw();
 }
 
 function handleCanvasMouseMove(evt) {
