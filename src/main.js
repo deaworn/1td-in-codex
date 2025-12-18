@@ -6,7 +6,9 @@ const towerGrid = document.getElementById("tower-grid");
 const startBtn = document.getElementById("start");
 const nextWaveBtn = document.getElementById("next-wave");
 const resetBtn = document.getElementById("reset");
+const versionEl = document.getElementById("version");
 
+const GAME_VERSION = "v0.3.0";
 const CANVAS_WIDTH = 960;
 const CANVAS_HEIGHT = 640;
 const gridSize = 40;
@@ -443,12 +445,13 @@ function nextWave() {
   updateStats();
 }
 
-  function init() {
-    buildTowerGrid();
-    resetGame();
-    canvas.addEventListener("click", handleCanvasClick);
-    startBtn.addEventListener("click", () => {
-      if (!running) startGame();
+function init() {
+  versionEl.textContent = GAME_VERSION;
+  buildTowerGrid();
+  resetGame();
+  canvas.addEventListener("click", handleCanvasClick);
+  startBtn.addEventListener("click", () => {
+    if (!running) startGame();
     });
   nextWaveBtn.addEventListener("click", nextWave);
   resetBtn.addEventListener("click", resetGame);
