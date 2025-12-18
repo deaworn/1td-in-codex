@@ -9,14 +9,54 @@ const resetBtn = document.getElementById("reset");
 const versionEl = document.getElementById("version");
 const towerActionsEl = document.getElementById("tower-actions");
 
-const GAME_VERSION = "v0.3.0";
+const GAME_VERSION = "v0.6.0";
 const CANVAS_WIDTH = 960;
 const CANVAS_HEIGHT = 640;
 const gridSize = 40;
 const towerRadius = 14;
-const towerUpgradeDamageFactor = 1.2;
-const towerUpgradeCostMultiplier = 1.6;
 const maxTowerLevel = 2;
+
+const UPGRADE_SPECS = {
+  rail: {
+    costMultiplier: 2,
+    description: "DMG +90%, +25 hatótáv, +15% tűzgyorsaság.",
+    apply: (tower) => {
+      tower.damage = Math.round((tower.baseDamage || tower.damage) * 1.9);
+      tower.range = (tower.baseRange || tower.range) + 25;
+      tower.fireRate = (tower.baseFireRate || tower.fireRate) * 1.15;
+    },
+  },
+  plasma: {
+    costMultiplier: 2,
+    description: "Dupla lövés, DMG +85%, +30 hatótáv, +20% tűzgyorsaság.",
+    apply: (tower) => {
+      tower.damage = Math.round((tower.baseDamage || tower.damage) * 1.85);
+      tower.range = (tower.baseRange || tower.range) + 30;
+      tower.fireRate = (tower.baseFireRate || tower.fireRate) * 1.2;
+      tower.multiShot = 2;
+    },
+  },
+  cry: {
+    costMultiplier: 2,
+    description: "Erősebb, hosszabb lassítás, +20 hatótáv, +10% tűzgyorsaság.",
+    apply: (tower) => {
+      tower.damage = Math.round((tower.baseDamage || tower.damage) * 1.35);
+      tower.range = (tower.baseRange || tower.range) + 20;
+      tower.fireRate = (tower.baseFireRate || tower.fireRate) * 1.1;
+      tower.slow = Math.max(0.2, (tower.baseSlow || tower.slow || 1) * 0.7);
+      tower.slowTime = (tower.baseSlowTime || tower.slowTime || 0) + 0.9;
+    },
+  },
+  default: {
+    costMultiplier: 2,
+    description: "+90% sebzés és jobb hatótáv.",
+    apply: (tower) => {
+      tower.damage = Math.round((tower.baseDamage || tower.damage) * 1.9);
+      tower.range = (tower.baseRange || tower.range) + 20;
+      tower.fireRate = (tower.baseFireRate || tower.fireRate) * 1.1;
+    },
+  },
+};
 
 canvas.width = CANVAS_WIDTH;
 canvas.height = CANVAS_HEIGHT;
@@ -147,6 +187,7 @@ function spawnWave() {
       progress: 0,
       pathIndex: 0,
       slowTimer: 0,
+      slowStrength: 1,
       elite: isElite,
       radius: isElite ? 15 : 12,
       color: isElite ? "#ff6bd6" : "#ffb347",
@@ -222,6 +263,12 @@ function handleCanvasClick(evt) {
     level: 1,
     baseDamage: activeTower.damage,
     baseCost: activeTower.cost,
+    baseRange: activeTower.range,
+    baseFireRate: activeTower.fireRate,
+    baseProjectileSpeed: activeTower.projectileSpeed,
+    baseSlow: activeTower.slow,
+    baseSlowTime: activeTower.slowTime,
+    multiShot: activeTower.multiShot || 1,
   });
   state.money -= activeTower.cost;
   appendLog(`${activeTower.name} lerakva (${cell.x}, ${cell.y}).`);
@@ -247,7 +294,7 @@ function upgradeSelectedTower() {
   }
   state.money -= cost;
   selectedTower.level = Math.min(maxTowerLevel, (selectedTower.level || 1) + 1);
-  selectedTower.damage = Math.round((selectedTower.baseDamage || selectedTower.damage) * towerUpgradeDamageFactor);
+  applyUpgradeSpec(selectedTower);
   appendLog(`${selectedTower.name} fejlesztve (szint ${selectedTower.level}).`);
   updateStats();
   updateTowerActions();
@@ -255,18 +302,27 @@ function upgradeSelectedTower() {
 }
 
 function getUpgradeCost(tower) {
-  return Math.ceil((tower.baseCost || tower.cost) * towerUpgradeCostMultiplier);
+  const spec = UPGRADE_SPECS[tower.id] || UPGRADE_SPECS.default;
+  return Math.ceil((tower.baseCost || tower.cost) * (spec.costMultiplier || 2));
 }
 
 function canUpgrade(tower) {
   return tower.level < maxTowerLevel;
 }
 
+function applyUpgradeSpec(tower) {
+  const spec = UPGRADE_SPECS[tower.id] || UPGRADE_SPECS.default;
+  spec.apply(tower);
+}
+
 function update(delta) {
   state.time += delta;
   enemies.forEach((enemy) => {
-    const slowFactor = enemy.slowTimer > 0 ? 0.6 : 1;
+    const slowFactor = enemy.slowTimer > 0 ? enemy.slowStrength || 0.6 : 1;
     enemy.slowTimer = Math.max(0, enemy.slowTimer - delta);
+    if (enemy.slowTimer === 0) {
+      enemy.slowStrength = 1;
+    }
     const speed = enemy.speed * slowFactor;
     const nextIdx = Math.min(path.length - 1, enemy.pathIndex + 1);
     const from = path[enemy.pathIndex];
@@ -324,6 +380,7 @@ function update(delta) {
       hit.hp -= proj.damage;
       if (proj.slow) {
         hit.slowTimer = proj.slowTime;
+        hit.slowStrength = Math.min(proj.slow, 0.6);
       }
       damageTexts.push({
         x: hit.x,
@@ -358,19 +415,24 @@ function update(delta) {
 function shoot(tower, target) {
   const angle = Math.atan2(target.y - tower.y, target.x - tower.x);
   const speed = tower.projectileSpeed;
-  const projectile = {
-    x: tower.x,
-    y: tower.y,
-    vx: Math.cos(angle) * speed,
-    vy: Math.sin(angle) * speed,
-    life: 1.8,
-    damage: tower.damage,
-    color: tower.color,
-    slow: tower.slow,
-    slowTime: tower.slowTime,
-  };
+  const shots = Math.max(1, tower.multiShot || 1);
+  const spread = shots > 1 ? 0.08 : 0;
+  for (let i = 0; i < shots; i++) {
+    const offset = spread * (i - (shots - 1) / 2);
+    const projectile = {
+      x: tower.x,
+      y: tower.y,
+      vx: Math.cos(angle + offset) * speed,
+      vy: Math.sin(angle + offset) * speed,
+      life: 1.8,
+      damage: tower.damage,
+      color: tower.color,
+      slow: tower.slow,
+      slowTime: tower.slowTime,
+    };
+    projectiles.push(projectile);
+  }
   tower.cooldown = 1 / tower.fireRate;
-  projectiles.push(projectile);
 }
 
 function drawGrid() {
@@ -416,7 +478,15 @@ function draw() {
     ctx.fill();
 
     if ((tower.level || 1) > 1) {
-      ctx.strokeStyle = "#f4f7ff";
+      ctx.save();
+      ctx.globalAlpha = 0.35;
+      ctx.fillStyle = `${tower.color}44`;
+      ctx.beginPath();
+      ctx.arc(tower.x, tower.y, towerRadius + 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      ctx.strokeStyle = `${tower.color}cc`;
       ctx.lineWidth = 3;
       ctx.beginPath();
       ctx.arc(tower.x, tower.y, towerRadius + 3, 0, Math.PI * 2);
@@ -517,6 +587,7 @@ function updateTowerActions() {
   const towerLevel = selectedTower.level || 1;
   const upgradeCost = getUpgradeCost(selectedTower);
   const atMax = !canUpgrade(selectedTower);
+  const upgradeSpec = UPGRADE_SPECS[selectedTower.id] || UPGRADE_SPECS.default;
 
   towerActionsEl.innerHTML = `
     <div class="tower-actions__header">
@@ -527,7 +598,7 @@ function updateTowerActions() {
       <button class="upgrade-btn" ${atMax ? "disabled" : ""}>Fejlesztés (${upgradeCost} cr)</button>
     </div>
     <div class="tower-actions__hint">${
-      atMax ? "Elérte a maximális szintet." : "A következő szinten +20% sebzés."
+      atMax ? "Elérte a maximális szintet." : `Következő szinten: ${upgradeSpec.description}`
     }</div>
   `;
 
