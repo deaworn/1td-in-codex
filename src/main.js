@@ -6,10 +6,14 @@ const towerGrid = document.getElementById("tower-grid");
 const startBtn = document.getElementById("start");
 const nextWaveBtn = document.getElementById("next-wave");
 const resetBtn = document.getElementById("reset");
+const pauseBtn = document.getElementById("pause-toggle");
+const speedButtons = document.querySelectorAll("[data-speed]");
 const versionEl = document.getElementById("version");
 const towerActionsEl = document.getElementById("tower-actions");
+const settingsListEl = document.getElementById("settings-list");
+const settingsStatusEl = document.getElementById("settings-status");
 
-const GAME_VERSION = "v0.4.5";
+const GAME_VERSION = "v0.5.0";
 const CANVAS_WIDTH = 960;
 const CANVAS_HEIGHT = 640;
 const gridSize = 40;
@@ -128,6 +132,35 @@ let selectedTower = null;
 let hoverCell = null;
 let lastTime = performance.now();
 let upgradePreviewRange = null;
+let isPaused = false;
+let speedMultiplier = 1;
+let rebindTarget = null;
+
+const KEY_ACTIONS = {
+  pause: "P",
+  speedUp: "+",
+  slowDown: "-",
+  start: "Start",
+  nextWave: "Következő hullám",
+  reset: "Reset",
+  tower1: "1. torony",
+  tower2: "2. torony",
+  tower3: "3. torony",
+  clearSelection: "Kijelölés törlése",
+};
+
+const keyBindings = {
+  pause: ["p"],
+  speedUp: ["+"],
+  slowDown: ["-"],
+  start: ["s", "Enter"],
+  nextWave: ["n"],
+  reset: ["r"],
+  tower1: ["1"],
+  tower2: ["2"],
+  tower3: ["3"],
+  clearSelection: ["Escape"],
+};
 
 function resetGame() {
   state = {
@@ -144,11 +177,14 @@ function resetGame() {
   selectedTower = null;
   hoverCell = null;
   upgradePreviewRange = null;
+  isPaused = false;
+  speedMultiplier = 1;
   running = false;
   logEl.innerHTML = "";
   appendLog("Játék visszaállítva. Helyezz el tornyokat és indítsd a hullámot!");
   updateStats();
   updateTowerActions();
+  updateSpeedControls();
   draw();
 }
 
@@ -306,6 +342,26 @@ function handleCanvasMouseLeave() {
   hoverCell = null;
 }
 
+function setActiveTowerByIndex(index) {
+  if (index < 0 || index >= towerTypes.length) return;
+  activeTower = towerTypes[index];
+  selectedTower = null;
+  hoverCell = null;
+  upgradePreviewRange = null;
+  updateTowerGridHighlight();
+  updateTowerActions();
+}
+
+function updateTowerGridHighlight() {
+  if (!towerGrid) return;
+  Array.from(towerGrid.children).forEach((c) => c.classList.remove("active"));
+  if (!activeTower) return;
+  const match = Array.from(towerGrid.children).find(
+    (c) => c.dataset.towerId === activeTower.id
+  );
+  if (match) match.classList.add("active");
+}
+
 function upgradeSelectedTower() {
   if (!selectedTower) return;
   if (!canUpgrade(selectedTower)) return;
@@ -343,6 +399,153 @@ function getUpgradedRange(tower) {
   const clone = { ...tower };
   applyUpgradeSpec(clone);
   return clone.range;
+}
+
+function updateSpeedControls() {
+  if (pauseBtn) {
+    pauseBtn.textContent = isPaused ? "▶" : "⏸";
+    pauseBtn.classList.toggle("active", isPaused);
+  }
+  speedButtons.forEach((btn) => {
+    const target = Number(btn.dataset.speed);
+    const isActive = !isPaused && speedMultiplier === target;
+    btn.classList.toggle("active", isActive);
+  });
+}
+
+function setSpeed(multiplier) {
+  speedMultiplier = multiplier;
+  isPaused = false;
+  updateSpeedControls();
+}
+
+function togglePause() {
+  isPaused = !isPaused;
+  updateSpeedControls();
+}
+
+function normalizeKey(key) {
+  if (!key) return "";
+  if (key.length === 1) return key.toLowerCase();
+  return key;
+}
+
+function formatKey(key) {
+  if (!key) return "";
+  if (key.length === 1) return key.toUpperCase();
+  return key;
+}
+
+function findActionForKey(key) {
+  const norm = normalizeKey(key);
+  return Object.entries(keyBindings).find(([, keys]) => keys.map(normalizeKey).includes(norm));
+}
+
+function setKeyBinding(action, key) {
+  const norm = normalizeKey(key);
+  const existing = findActionForKey(key);
+  if (existing && existing[0] !== action) {
+    if (settingsStatusEl) {
+      settingsStatusEl.textContent = `A "${formatKey(key)}" már a(z) "${KEY_ACTIONS[existing[0]]}" műveleté.`;
+    }
+    return false;
+  }
+  const list = keyBindings[action] || [];
+  if (!list.map(normalizeKey).includes(norm)) {
+    list.push(key);
+    keyBindings[action] = list;
+  }
+  if (settingsStatusEl) {
+    settingsStatusEl.textContent = `"${formatKey(key)}" hozzárendelve: ${KEY_ACTIONS[action]}.`;
+  }
+  rebindTarget = null;
+  renderSettings();
+  return true;
+}
+
+function handleRebind(key) {
+  if (!rebindTarget) return;
+  setKeyBinding(rebindTarget, key);
+}
+
+function handleAction(action) {
+  switch (action) {
+    case "pause":
+      togglePause();
+      break;
+    case "speedUp":
+      if (speedMultiplier < 2) setSpeed(speedMultiplier === 1 ? 1.5 : 2);
+      break;
+    case "slowDown":
+      if (speedMultiplier > 1) setSpeed(speedMultiplier === 2 ? 1.5 : 1);
+      break;
+    case "start":
+      isPaused = false;
+      updateSpeedControls();
+      startGame();
+      break;
+    case "nextWave":
+      nextWave();
+      break;
+    case "reset":
+      resetGame();
+      break;
+    case "tower1":
+      setActiveTowerByIndex(0);
+      break;
+    case "tower2":
+      setActiveTowerByIndex(1);
+      break;
+    case "tower3":
+      setActiveTowerByIndex(2);
+      break;
+    case "clearSelection":
+      clearSelectionAndPlacement();
+      break;
+    default:
+      break;
+  }
+}
+
+function handleKeyDown(evt) {
+  if (rebindTarget) {
+    evt.preventDefault();
+    handleRebind(evt.key);
+    return;
+  }
+  const binding = findActionForKey(evt.key);
+  if (binding) {
+    evt.preventDefault();
+    handleAction(binding[0]);
+  }
+}
+
+function renderSettings() {
+  if (!settingsListEl) return;
+  settingsListEl.innerHTML = "";
+  Object.entries(KEY_ACTIONS).forEach(([action, label]) => {
+    const row = document.createElement("div");
+    row.className = "settings-row";
+    const keys = keyBindings[action] || [];
+    row.innerHTML = `
+      <div class="settings-row__label">${label}</div>
+      <div class="settings-row__keys">
+        ${keys.map((k) => `<span class="key-chip">${formatKey(k)}</span>`).join("")}
+      </div>
+      <button class="settings-row__bind" data-action="${action}">Új gomb</button>
+    `;
+    settingsListEl.appendChild(row);
+  });
+
+  const bindButtons = settingsListEl.querySelectorAll(".settings-row__bind");
+  bindButtons.forEach((btn) => {
+    btn.onclick = () => {
+      rebindTarget = btn.dataset.action;
+      if (settingsStatusEl) {
+        settingsStatusEl.textContent = `${KEY_ACTIONS[rebindTarget]} → nyomj egy gombot a hozzárendeléshez.`;
+      }
+    };
+  });
 }
 
 function update(delta) {
@@ -628,7 +831,10 @@ function animate() {
   const delta = Math.min(0.05, (now - lastTime) / 1000);
   lastTime = now;
   if (running) {
-    update(delta);
+    const effectiveDelta = isPaused ? 0 : delta * speedMultiplier;
+    if (effectiveDelta > 0) {
+      update(effectiveDelta);
+    }
   }
   draw();
   requestAnimationFrame(animate);
@@ -690,6 +896,7 @@ function buildTowerGrid() {
   towerTypes.forEach((tower) => {
     const card = document.createElement("button");
     card.className = "tower-card";
+    card.dataset.towerId = tower.id;
     card.innerHTML = `
       <h3>${tower.name}</h3>
       <div class="tower-meta">${tower.description}</div>
@@ -701,13 +908,8 @@ function buildTowerGrid() {
       </div>
     `;
     card.onclick = () => {
-      selectedTower = null;
-      activeTower = tower;
-      hoverCell = null;
-      upgradePreviewRange = null;
-      Array.from(towerGrid.children).forEach((c) => c.classList.remove("active"));
-      card.classList.add("active");
-      updateTowerActions();
+      setActiveTowerByIndex(towerTypes.findIndex((t) => t.id === tower.id));
+      updateTowerGridHighlight();
     };
     if (activeTower && tower.id === activeTower.id) card.classList.add("active");
     towerGrid.appendChild(card);
@@ -717,6 +919,8 @@ function buildTowerGrid() {
 function startGame() {
   if (running) return;
   running = true;
+  isPaused = false;
+  updateSpeedControls();
   spawnWave();
 }
 
@@ -742,16 +946,26 @@ function init() {
   canvas.addEventListener("click", handleCanvasClick);
   canvas.addEventListener("mousemove", handleCanvasMouseMove);
   canvas.addEventListener("mouseleave", handleCanvasMouseLeave);
-  document.addEventListener("keydown", (evt) => {
-    if (evt.key === "Escape") {
-      clearSelectionAndPlacement();
-    }
-  });
+  document.addEventListener("keydown", handleKeyDown);
   startBtn.addEventListener("click", () => {
+    isPaused = false;
+    updateSpeedControls();
     if (!running) startGame();
-    });
+  });
   nextWaveBtn.addEventListener("click", nextWave);
   resetBtn.addEventListener("click", resetGame);
+  if (pauseBtn) {
+    pauseBtn.addEventListener("click", () => {
+      togglePause();
+    });
+  }
+  speedButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      setSpeed(Number(btn.dataset.speed));
+    });
+  });
+  renderSettings();
+  updateSpeedControls();
   animate();
 }
 

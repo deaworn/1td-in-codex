@@ -13,6 +13,12 @@
       <button id="start">Start</button>
       <button id="next-wave">Következő hullám</button>
       <button id="reset">Reset</button>
+      <div class="speed-controls" aria-label="Játékmenet vezérlés">
+        <button id="pause-toggle" class="icon-btn" title="Pause/Resume" aria-label="Pause/Resume">⏸</button>
+        <button data-speed="1" class="icon-btn speed-btn" aria-label="1x sebesség">①</button>
+        <button data-speed="1.5" class="icon-btn speed-btn" aria-label="1.5x sebesség">➀.⑤</button>
+        <button data-speed="2" class="icon-btn speed-btn" aria-label="2x sebesség">②</button>
+      </div>
     </div>
     <div class="stats" id="stats"></div>
   </header>
@@ -27,6 +33,13 @@
       <div class="tower-grid" id="tower-grid"></div>
       <div class="hint">Kattints a pálya melletti szabad rácsokra a torony lerakásához.</div>
       <div class="tower-actions" id="tower-actions"></div>
+      <div class="settings">
+        <div class="settings__header">
+          <h3>Beállítások</h3>
+          <div class="settings__status" id="settings-status"></div>
+        </div>
+        <div class="settings__list" id="settings-list"></div>
+      </div>
       <div class="log" id="log"></div>
     </section>
   </main>
