@@ -9,7 +9,7 @@ const resetBtn = document.getElementById("reset");
 const versionEl = document.getElementById("version");
 const towerActionsEl = document.getElementById("tower-actions");
 
-const GAME_VERSION = "v0.4.2";
+const GAME_VERSION = "v0.4.3";
 const CANVAS_WIDTH = 960;
 const CANVAS_HEIGHT = 640;
 const gridSize = 40;
@@ -233,6 +233,12 @@ function getCellFromEvent(evt) {
   };
 }
 
+function clearActiveTowerSelection() {
+  activeTower = null;
+  if (!towerGrid) return;
+  Array.from(towerGrid.children).forEach((card) => card.classList.remove("active"));
+}
+
 function handleCanvasClick(evt) {
   const cell = getCellFromEvent(evt);
 
@@ -245,6 +251,7 @@ function handleCanvasClick(evt) {
     return;
   }
 
+  const hadSelectedTower = !!selectedTower;
   const canAttemptPlacement = !selectedTower && activeTower && canPlaceTower(cell);
   if (canAttemptPlacement) {
     if (state.money < activeTower.cost) {
@@ -273,6 +280,9 @@ function handleCanvasClick(evt) {
   }
 
   selectedTower = null;
+  if (hadSelectedTower) {
+    clearActiveTowerSelection();
+  }
   hoverCell = null;
   updateTowerActions();
   draw();
