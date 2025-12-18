@@ -116,6 +116,52 @@ button:active { transform: translateY(0); }
 
 .hint { color: var(--muted); font-size: 0.9rem; }
 
+.tower-actions {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.tower-actions__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tower-actions__title {
+  font-weight: 700;
+}
+
+.tower-actions__level {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.tower-actions__hint {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.upgrade-btn {
+  background: linear-gradient(135deg, #5ad0ff, #4ad991);
+  color: #0b1020;
+  border: none;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-weight: 800;
+  box-shadow: 0 8px 20px rgba(90, 208, 255, 0.25);
+}
+
+.upgrade-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
 .log {
   background: rgba(0, 0, 0, 0.35);
   border-radius: 10px;

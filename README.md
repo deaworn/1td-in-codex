@@ -11,3 +11,4 @@ Egyszerű, böngészőben futó tower defense demó. A pályát canvas rajzolja 
 - Hullámok: új ellenségtípusok a felderítőtől a páncélozott rajokig és egy záró "Gépintelligencia" főellenség.
 - Tornyok: rail ágyú (gyors), plazma (nagy sebzés), kriotron (lassító hatás).
 - Induló erőforrások: 250 kredit és 20 életerő.
+- Fejlesztés: a lerakott tornyok egyszer fejleszthetők (szint 2), ami +20% sebzést ad nagyobb áron.

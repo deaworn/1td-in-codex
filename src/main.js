@@ -7,12 +7,16 @@ const startBtn = document.getElementById("start");
 const nextWaveBtn = document.getElementById("next-wave");
 const resetBtn = document.getElementById("reset");
 const versionEl = document.getElementById("version");
+const towerActionsEl = document.getElementById("tower-actions");
 
 const GAME_VERSION = "v0.3.0";
 const CANVAS_WIDTH = 960;
 const CANVAS_HEIGHT = 640;
 const gridSize = 40;
 const towerRadius = 14;
+const towerUpgradeDamageFactor = 1.2;
+const towerUpgradeCostMultiplier = 1.6;
+const maxTowerLevel = 2;
 
 canvas.width = CANVAS_WIDTH;
 canvas.height = CANVAS_HEIGHT;
@@ -101,6 +105,7 @@ function resetGame() {
   logEl.innerHTML = "";
   appendLog("Játék visszaállítva. Helyezz el tornyokat és indítsd a hullámot!");
   updateStats();
+  updateTowerActions();
   draw();
 }
 
@@ -194,11 +199,13 @@ function handleCanvasClick(evt) {
   const clickedTower = towers.find((tower) => distance(tower, cell) <= selectionRadius);
   if (clickedTower) {
     selectedTower = clickedTower;
+    updateTowerActions();
     draw();
     return;
   }
 
   selectedTower = null;
+  updateTowerActions();
 
   if (!canPlaceTower(cell)) {
     appendLog("Nem helyezhetsz tornyot a pályára vagy közvetlen mellé.");
@@ -208,10 +215,18 @@ function handleCanvasClick(evt) {
     appendLog("Nincs elég kredited ehhez a toronyhoz.");
     return;
   }
-  towers.push({ ...cell, ...activeTower, cooldown: 0 });
+  towers.push({
+    ...cell,
+    ...activeTower,
+    cooldown: 0,
+    level: 1,
+    baseDamage: activeTower.damage,
+    baseCost: activeTower.cost,
+  });
   state.money -= activeTower.cost;
   appendLog(`${activeTower.name} lerakva (${cell.x}, ${cell.y}).`);
   updateStats();
+  updateTowerActions();
 }
 
 function handleCanvasMouseMove(evt) {
@@ -220,6 +235,31 @@ function handleCanvasMouseMove(evt) {
 
 function handleCanvasMouseLeave() {
   hoverCell = null;
+}
+
+function upgradeSelectedTower() {
+  if (!selectedTower) return;
+  if (!canUpgrade(selectedTower)) return;
+  const cost = getUpgradeCost(selectedTower);
+  if (state.money < cost) {
+    appendLog("Nincs elég kredited a fejlesztéshez.");
+    return;
+  }
+  state.money -= cost;
+  selectedTower.level = Math.min(maxTowerLevel, (selectedTower.level || 1) + 1);
+  selectedTower.damage = Math.round((selectedTower.baseDamage || selectedTower.damage) * towerUpgradeDamageFactor);
+  appendLog(`${selectedTower.name} fejlesztve (szint ${selectedTower.level}).`);
+  updateStats();
+  updateTowerActions();
+  draw();
+}
+
+function getUpgradeCost(tower) {
+  return Math.ceil((tower.baseCost || tower.cost) * towerUpgradeCostMultiplier);
+}
+
+function canUpgrade(tower) {
+  return tower.level < maxTowerLevel;
 }
 
 function update(delta) {
@@ -375,6 +415,14 @@ function draw() {
     ctx.arc(tower.x, tower.y, towerRadius, 0, Math.PI * 2);
     ctx.fill();
 
+    if ((tower.level || 1) > 1) {
+      ctx.strokeStyle = "#f4f7ff";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(tower.x, tower.y, towerRadius + 3, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
     if (tower === selectedTower) {
       ctx.strokeStyle = `${tower.color}22`;
       ctx.beginPath();
@@ -457,6 +505,36 @@ function updateStats() {
     <span class="badge">Kredit: <strong>${state.money}</strong></span>
     <span class="badge">Hullám: <strong>${state.wave + 1}/${waves.length}</strong></span>
   `;
+}
+
+function updateTowerActions() {
+  if (!towerActionsEl) return;
+  if (!selectedTower) {
+    towerActionsEl.innerHTML =
+      '<div class="tower-actions__hint">Nincs kiválasztott torony. Kattints egy lerakott toronyra a fejlesztéshez.</div>';
+    return;
+  }
+  const towerLevel = selectedTower.level || 1;
+  const upgradeCost = getUpgradeCost(selectedTower);
+  const atMax = !canUpgrade(selectedTower);
+
+  towerActionsEl.innerHTML = `
+    <div class="tower-actions__header">
+      <div>
+        <div class="tower-actions__title">${selectedTower.name}</div>
+        <div class="tower-actions__level">Szint: ${towerLevel}/${maxTowerLevel}</div>
+      </div>
+      <button class="upgrade-btn" ${atMax ? "disabled" : ""}>Fejlesztés (${upgradeCost} cr)</button>
+    </div>
+    <div class="tower-actions__hint">${
+      atMax ? "Elérte a maximális szintet." : "A következő szinten +20% sebzés."
+    }</div>
+  `;
+
+  const upgradeBtn = towerActionsEl.querySelector(".upgrade-btn");
+  if (upgradeBtn && !atMax) {
+    upgradeBtn.onclick = upgradeSelectedTower;
+  }
 }
 
 function buildTowerGrid() {
