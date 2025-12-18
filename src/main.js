@@ -9,7 +9,7 @@ const resetBtn = document.getElementById("reset");
 const versionEl = document.getElementById("version");
 const towerActionsEl = document.getElementById("tower-actions");
 
-const GAME_VERSION = "v0.4.3";
+const GAME_VERSION = "v0.4.4";
 const CANVAS_WIDTH = 960;
 const CANVAS_HEIGHT = 640;
 const gridSize = 40;
@@ -123,7 +123,7 @@ let towers;
 let enemies;
 let damageTexts;
 let running = false;
-let activeTower = towerTypes[0];
+let activeTower = null;
 let selectedTower = null;
 let hoverCell = null;
 let lastTime = performance.now();
@@ -139,6 +139,7 @@ function resetGame() {
   towers = [];
   enemies = [];
   damageTexts = [];
+  clearActiveTowerSelection();
   selectedTower = null;
   hoverCell = null;
   running = false;
@@ -239,6 +240,14 @@ function clearActiveTowerSelection() {
   Array.from(towerGrid.children).forEach((card) => card.classList.remove("active"));
 }
 
+function clearSelectionAndPlacement() {
+  selectedTower = null;
+  hoverCell = null;
+  clearActiveTowerSelection();
+  updateTowerActions();
+  draw();
+}
+
 function handleCanvasClick(evt) {
   const cell = getCellFromEvent(evt);
 
@@ -246,12 +255,12 @@ function handleCanvasClick(evt) {
   const clickedTower = towers.find((tower) => distance(tower, cell) <= selectionRadius);
   if (clickedTower) {
     selectedTower = clickedTower;
+    clearActiveTowerSelection();
     updateTowerActions();
     draw();
     return;
   }
 
-  const hadSelectedTower = !!selectedTower;
   const canAttemptPlacement = !selectedTower && activeTower && canPlaceTower(cell);
   if (canAttemptPlacement) {
     if (state.money < activeTower.cost) {
@@ -275,17 +284,11 @@ function handleCanvasClick(evt) {
     state.money -= activeTower.cost;
     appendLog(`${activeTower.name} lerakva (${cell.x}, ${cell.y}).`);
     updateStats();
-    updateTowerActions();
+    clearSelectionAndPlacement();
     return;
   }
 
-  selectedTower = null;
-  if (hadSelectedTower) {
-    clearActiveTowerSelection();
-  }
-  hoverCell = null;
-  updateTowerActions();
-  draw();
+  clearSelectionAndPlacement();
 }
 
 function handleCanvasMouseMove(evt) {
@@ -662,11 +665,14 @@ function buildTowerGrid() {
       </div>
     `;
     card.onclick = () => {
+      selectedTower = null;
       activeTower = tower;
+      hoverCell = null;
       Array.from(towerGrid.children).forEach((c) => c.classList.remove("active"));
       card.classList.add("active");
+      updateTowerActions();
     };
-    if (tower.id === activeTower.id) card.classList.add("active");
+    if (activeTower && tower.id === activeTower.id) card.classList.add("active");
     towerGrid.appendChild(card);
   });
 }
@@ -699,6 +705,11 @@ function init() {
   canvas.addEventListener("click", handleCanvasClick);
   canvas.addEventListener("mousemove", handleCanvasMouseMove);
   canvas.addEventListener("mouseleave", handleCanvasMouseLeave);
+  document.addEventListener("keydown", (evt) => {
+    if (evt.key === "Escape") {
+      clearSelectionAndPlacement();
+    }
+  });
   startBtn.addEventListener("click", () => {
     if (!running) startGame();
     });
