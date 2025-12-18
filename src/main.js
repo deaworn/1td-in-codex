@@ -7,8 +7,13 @@ const startBtn = document.getElementById("start");
 const nextWaveBtn = document.getElementById("next-wave");
 const resetBtn = document.getElementById("reset");
 
+const CANVAS_WIDTH = 960;
+const CANVAS_HEIGHT = 640;
 const gridSize = 40;
 const towerRadius = 14;
+
+canvas.width = CANVAS_WIDTH;
+canvas.height = CANVAS_HEIGHT;
 
 const path = [
   { x: 40, y: 80 },
