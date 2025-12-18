@@ -9,7 +9,7 @@ const resetBtn = document.getElementById("reset");
 const versionEl = document.getElementById("version");
 const towerActionsEl = document.getElementById("tower-actions");
 
-const GAME_VERSION = "v0.4.4";
+const GAME_VERSION = "v0.4.5";
 const CANVAS_WIDTH = 960;
 const CANVAS_HEIGHT = 640;
 const gridSize = 40;
@@ -127,6 +127,7 @@ let activeTower = null;
 let selectedTower = null;
 let hoverCell = null;
 let lastTime = performance.now();
+let upgradePreviewRange = null;
 
 function resetGame() {
   state = {
@@ -142,6 +143,7 @@ function resetGame() {
   clearActiveTowerSelection();
   selectedTower = null;
   hoverCell = null;
+  upgradePreviewRange = null;
   running = false;
   logEl.innerHTML = "";
   appendLog("Játék visszaállítva. Helyezz el tornyokat és indítsd a hullámot!");
@@ -243,6 +245,7 @@ function clearActiveTowerSelection() {
 function clearSelectionAndPlacement() {
   selectedTower = null;
   hoverCell = null;
+  upgradePreviewRange = null;
   clearActiveTowerSelection();
   updateTowerActions();
   draw();
@@ -255,6 +258,7 @@ function handleCanvasClick(evt) {
   const clickedTower = towers.find((tower) => distance(tower, cell) <= selectionRadius);
   if (clickedTower) {
     selectedTower = clickedTower;
+    upgradePreviewRange = null;
     clearActiveTowerSelection();
     updateTowerActions();
     draw();
@@ -293,6 +297,9 @@ function handleCanvasClick(evt) {
 
 function handleCanvasMouseMove(evt) {
   hoverCell = activeTower ? getCellFromEvent(evt) : null;
+  if (!activeTower) {
+    upgradePreviewRange = null;
+  }
 }
 
 function handleCanvasMouseLeave() {
@@ -328,6 +335,14 @@ function canUpgrade(tower) {
 function applyUpgradeSpec(tower) {
   const spec = UPGRADE_SPECS[tower.id] || UPGRADE_SPECS.default;
   spec.apply(tower);
+}
+
+function getUpgradedRange(tower) {
+  if (!tower) return null;
+  const spec = UPGRADE_SPECS[tower.id] || UPGRADE_SPECS.default;
+  const clone = { ...tower };
+  applyUpgradeSpec(clone);
+  return clone.range;
 }
 
 function update(delta) {
@@ -510,6 +525,7 @@ function draw() {
     }
 
     if (tower === selectedTower) {
+      const rangeToShow = upgradePreviewRange || tower.range;
       const pulse = 0.6 + 0.4 * Math.sin(time * 2.2);
 
       ctx.save();
@@ -536,7 +552,7 @@ function draw() {
       ctx.strokeStyle = `${tower.color}66`;
       ctx.lineWidth = 2.5;
       ctx.beginPath();
-      ctx.arc(tower.x, tower.y, tower.range, 0, Math.PI * 2);
+      ctx.arc(tower.x, tower.y, rangeToShow, 0, Math.PI * 2);
       ctx.stroke();
       ctx.restore();
     }
@@ -596,6 +612,15 @@ function drawHoverPreview() {
   ctx.fill();
   ctx.stroke();
   ctx.restore();
+
+  ctx.save();
+  ctx.globalAlpha = 0.18;
+  ctx.strokeStyle = isValid ? `${activeTower.color}88` : "#ff7b7b88";
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.arc(hoverCell.x, hoverCell.y, activeTower.range, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
 }
 
 function animate() {
@@ -621,6 +646,7 @@ function updateStats() {
 function updateTowerActions() {
   if (!towerActionsEl) return;
   if (!selectedTower) {
+    upgradePreviewRange = null;
     towerActionsEl.innerHTML =
       '<div class="tower-actions__hint">Nincs kiválasztott torony. Kattints egy lerakott toronyra a fejlesztéshez.</div>';
     return;
@@ -646,6 +672,16 @@ function updateTowerActions() {
   const upgradeBtn = towerActionsEl.querySelector(".upgrade-btn");
   if (upgradeBtn && !atMax) {
     upgradeBtn.onclick = upgradeSelectedTower;
+    upgradeBtn.onmouseenter = () => {
+      upgradePreviewRange = getUpgradedRange(selectedTower);
+      draw();
+    };
+    upgradeBtn.onmouseleave = () => {
+      upgradePreviewRange = null;
+      draw();
+    };
+  } else {
+    upgradePreviewRange = null;
   }
 }
 
@@ -668,6 +704,7 @@ function buildTowerGrid() {
       selectedTower = null;
       activeTower = tower;
       hoverCell = null;
+      upgradePreviewRange = null;
       Array.from(towerGrid.children).forEach((c) => c.classList.remove("active"));
       card.classList.add("active");
       updateTowerActions();
