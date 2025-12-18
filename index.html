@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>1TD – Tower Defense prototípus</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="branding">1TD – Tower Defense</div>
+    <div class="controls">
+      <button id="start">Start</button>
+      <button id="next-wave">Következő hullám</button>
+      <button id="reset">Reset</button>
+    </div>
+    <div class="stats" id="stats"></div>
+  </header>
+
+  <main class="layout">
+    <section class="canvas-wrap">
+      <canvas id="game" width="960" height="640"></canvas>
+      <div class="version-pill" id="version"></div>
+    </section>
+    <section class="sidebar">
+      <h2>Tornyok</h2>
+      <div class="tower-grid" id="tower-grid"></div>
+      <div class="hint">Kattints a pálya melletti szabad rácsokra a torony lerakásához.</div>
+      <div class="tower-actions" id="tower-actions"></div>
+      <div class="log" id="log"></div>
+    </section>
+  </main>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
