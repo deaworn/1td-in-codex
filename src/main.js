@@ -8,7 +8,7 @@ const nextWaveBtn = document.getElementById("next-wave");
 const resetBtn = document.getElementById("reset");
 const versionEl = document.getElementById("version");
 
-const GAME_VERSION = "v0.3.0";
+const GAME_VERSION = "v0.3.1";
 const CANVAS_WIDTH = 960;
 const CANVAS_HEIGHT = 640;
 const gridSize = 40;
