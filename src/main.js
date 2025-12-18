@@ -8,7 +8,7 @@ const nextWaveBtn = document.getElementById("next-wave");
 const resetBtn = document.getElementById("reset");
 const versionEl = document.getElementById("version");
 
-const GAME_VERSION = "v0.2.2";
+const GAME_VERSION = "v0.3.0";
 const CANVAS_WIDTH = 960;
 const CANVAS_HEIGHT = 640;
 const gridSize = 40;
@@ -428,19 +428,14 @@ function drawHoverPreview() {
   const isValid = canPlaceTower(hoverCell);
 
   ctx.save();
-  ctx.fillStyle = isValid ? "rgba(255, 255, 255, 0.08)" : "rgba(255, 99, 99, 0.16)";
-  ctx.strokeStyle = isValid ? "rgba(255, 255, 255, 0.18)" : "rgba(255, 99, 99, 0.4)";
-  ctx.lineWidth = 2;
+  ctx.globalAlpha = 0.5;
+  ctx.fillStyle = isValid ? `${activeTower.color}66` : "#ff7b7b66";
+  ctx.strokeStyle = isValid ? `${activeTower.color}aa` : "#ff7b7baa";
+  ctx.lineWidth = 3;
   ctx.beginPath();
-  ctx.rect(hoverCell.x - gridSize / 2, hoverCell.y - gridSize / 2, gridSize, gridSize);
+  ctx.arc(hoverCell.x, hoverCell.y, towerRadius + 4, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
-
-  ctx.globalAlpha = 0.4;
-  ctx.fillStyle = isValid ? activeTower.color : "#ff7b7b";
-  ctx.beginPath();
-  ctx.arc(hoverCell.x, hoverCell.y, towerRadius, 0, Math.PI * 2);
-  ctx.fill();
   ctx.restore();
 }
 
