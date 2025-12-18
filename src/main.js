@@ -8,7 +8,7 @@ const nextWaveBtn = document.getElementById("next-wave");
 const resetBtn = document.getElementById("reset");
 const versionEl = document.getElementById("version");
 
-const GAME_VERSION = "v0.3.1";
+const GAME_VERSION = "v0.2.0";
 const CANVAS_WIDTH = 960;
 const CANVAS_HEIGHT = 640;
 const gridSize = 40;
@@ -77,6 +77,7 @@ let state;
 let projectiles;
 let towers;
 let enemies;
+let damageTexts;
 let running = false;
 let activeTower = towerTypes[0];
 let selectedTower = null;
@@ -92,6 +93,7 @@ function resetGame() {
   projectiles = [];
   towers = [];
   enemies = [];
+  damageTexts = [];
   selectedTower = null;
   running = false;
   logEl.innerHTML = "";
@@ -264,14 +266,29 @@ function update(delta) {
     proj.life -= delta;
     const hit = enemies.find((e) => distance(e, proj) < e.radius);
     if (hit) {
+      const damageAmount = Math.min(proj.damage, hit.hp);
       hit.hp -= proj.damage;
       if (proj.slow) {
         hit.slowTimer = proj.slowTime;
       }
+      damageTexts.push({
+        x: hit.x,
+        y: hit.y,
+        elapsed: 0,
+        duration: 0.7,
+        text: `-${Math.round(damageAmount)}`,
+        color: hit.elite ? "#ffb347" : "#f4f7ff",
+      });
       proj.life = 0;
     }
   });
   projectiles = projectiles.filter((p) => p.life > 0);
+
+  damageTexts.forEach((text) => {
+    text.elapsed += delta;
+    text.y -= delta * 32;
+  });
+  damageTexts = damageTexts.filter((text) => text.elapsed < text.duration);
 
   if (state.health <= 0) {
     running = false;
@@ -369,6 +386,17 @@ function draw() {
       (enemy.hp / enemy.maxHp) * 32,
       enemy.hpBarHeight
     );
+  });
+
+  damageTexts.forEach((text) => {
+    const alpha = 1 - text.elapsed / text.duration;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = text.color;
+    ctx.font = "16px 'Inter', system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(text.text, text.x, text.y - 6);
+    ctx.restore();
   });
 
   projectiles.forEach((proj) => {
