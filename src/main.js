@@ -27,7 +27,7 @@ const towerActionsEl = document.getElementById("tower-actions");
 const settingsListEl = document.getElementById("settings-list");
 const settingsStatusEl = document.getElementById("settings-status");
 
-const GAME_VERSION = "v0.5.9";
+const GAME_VERSION = "v0.5.8";
 const CANVAS_WIDTH = 960;
 const CANVAS_HEIGHT = 640;
 const gridSize = 40;
@@ -163,7 +163,15 @@ const GAME_PHASES = {
   PAUSED: "paused",
 };
 
+const GAME_STATES = {
+  READY: "READY",
+  RUNNING: "RUNNING",
+  PAUSED: "PAUSED",
+  GAME_OVER: "GAME_OVER",
+};
+
 let gamePhase = GAME_PHASES.LOADING;
+let gameState = GAME_STATES.READY;
 
 const KEY_ACTIONS = {
   pause: "P",
@@ -218,6 +226,7 @@ function resetGame() {
   updateTowerActions();
   updateSpeedControls();
   updateTowerDetailPanel();
+  setGameState(GAME_STATES.READY);
   setGamePhase(GAME_PHASES.LOADING);
   draw();
 }
@@ -370,6 +379,7 @@ function hideBetweenOverlay() {
 function enterIdleFromLoading() {
   if (gamePhase !== GAME_PHASES.LOADING) return;
   hideOverlay(overlayLoading);
+  setGameState(GAME_STATES.READY);
   setGamePhase(GAME_PHASES.BUILD);
 }
 
@@ -522,6 +532,32 @@ function togglePause() {
   updateControlState();
 }
 
+function setGameState(newState) {
+  gameState = newState;
+  switch (newState) {
+    case GAME_STATES.RUNNING:
+      running = true;
+      isPaused = false;
+      hideOverlay(overlayLoading);
+      hideWaveOverlay();
+      hideBetweenOverlay();
+      break;
+    case GAME_STATES.PAUSED:
+      running = true;
+      isPaused = true;
+      break;
+    case GAME_STATES.GAME_OVER:
+      running = false;
+      isPaused = false;
+      break;
+    default:
+      running = false;
+      isPaused = false;
+      break;
+  }
+  updateControlState();
+}
+
 function setGamePhase(newPhase) {
   gamePhase = newPhase;
   switch (newPhase) {
@@ -575,6 +611,7 @@ function setGamePhase(newPhase) {
       hideOverlay(overlayVictory);
       hideBetweenOverlay();
       showOverlay(overlayGameOver);
+      setGameState(GAME_STATES.GAME_OVER);
       break;
     case GAME_PHASES.PAUSED:
       running = true;
@@ -629,6 +666,7 @@ function startNextWave() {
     state.wave += 1;
   }
   waveFinished = false;
+  setGameState(GAME_STATES.RUNNING);
   setGamePhase(GAME_PHASES.WAVE);
   spawnWave();
 }
@@ -636,19 +674,21 @@ function startNextWave() {
 function handleControlClick() {
   const lastWaveCompleted = waveFinished && waveSpawnTotal > 0 && state.wave >= waves.length - 1;
   if (lastWaveCompleted) return;
-  if (gamePhase === GAME_PHASES.WAVE && !isPaused) {
+  if (gameState === GAME_STATES.RUNNING && !isPaused) {
+    setGameState(GAME_STATES.PAUSED);
     setGamePhase(GAME_PHASES.PAUSED);
     updateControlState();
     return;
   }
-  if (gamePhase === GAME_PHASES.PAUSED) {
+  if (gameState === GAME_STATES.PAUSED) {
+    setGameState(GAME_STATES.RUNNING);
     setGamePhase(GAME_PHASES.WAVE);
     updateControlState();
     return;
   }
-  if (gamePhase === GAME_PHASES.IDLE) {
+  if (gameState === GAME_STATES.READY) {
+    setGameState(GAME_STATES.RUNNING);
     startNextWave();
-    return;
   }
 }
 
@@ -821,7 +861,7 @@ function updateTowerDetailPanel() {
 function update(delta) {
   state.time += delta;
 
-  const simulate = gamePhase === GAME_PHASES.WAVE && !isPaused;
+  const simulate = gameState === GAME_STATES.RUNNING && gamePhase === GAME_PHASES.WAVE && !isPaused;
   if (simulate) {
     enemies.forEach((enemy) => {
       const slowFactor = enemy.slowTimer > 0 ? enemy.slowStrength || 0.6 : 1;
@@ -915,6 +955,7 @@ function update(delta) {
     projectiles = [];
     damageTexts = [];
     setSpeed(1);
+    setGameState(GAME_STATES.READY);
     const nextWave = Math.min(state.wave + (waveSpawnTotal > 0 ? 2 : 1), waves.length);
     const lastWaveDone = state.wave >= waves.length - 1;
     if (lastWaveDone) {
@@ -931,6 +972,7 @@ function update(delta) {
     appendLog("Elestél. Nyomd meg a Reset gombot az újrakezdéshez.");
     projectiles = [];
     damageTexts = [];
+    setGameState(GAME_STATES.GAME_OVER);
     setGamePhase(GAME_PHASES.GAME_OVER);
   }
 
@@ -1131,11 +1173,10 @@ function animate() {
   const now = performance.now();
   const delta = Math.min(0.05, (now - lastTime) / 1000);
   lastTime = now;
-  if (running) {
-    const effectiveDelta = isPaused ? 0 : delta * speedMultiplier;
-    if (effectiveDelta > 0) {
-      update(effectiveDelta);
-    }
+  const shouldSimulate = gameState === GAME_STATES.RUNNING && !isPaused;
+  if (shouldSimulate) {
+    const effectiveDelta = delta * speedMultiplier;
+    if (effectiveDelta > 0) update(effectiveDelta);
   }
   draw();
   requestAnimationFrame(animate);
@@ -1225,8 +1266,8 @@ function buildTowerGrid() {
 }
 
 function startGame() {
-  if (running) return;
-  setGameState("running");
+  if (gameState === GAME_STATES.RUNNING) return;
+  setGameState(GAME_STATES.RUNNING);
   spawnWave();
 }
 
