@@ -17,7 +17,7 @@ const towerActionsEl = document.getElementById("tower-actions");
 const settingsListEl = document.getElementById("settings-list");
 const settingsStatusEl = document.getElementById("settings-status");
 
-const GAME_VERSION = "v0.5.3";
+const GAME_VERSION = "v0.5.5";
 const CANVAS_WIDTH = 960;
 const CANVAS_HEIGHT = 640;
 const gridSize = 40;
@@ -148,7 +148,6 @@ const KEY_ACTIONS = {
   pause: "P",
   speedUp: "+",
   slowDown: "-",
-  start: "Start",
   nextWave: "Következő hullám",
   reset: "Reset",
   tower1: "1. torony",
