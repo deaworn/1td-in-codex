@@ -58,6 +58,13 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
+.next-wave-label {
+  color: var(--muted);
+  font-size: 0.9rem;
+  min-width: 140px;
+  text-align: right;
+}
+
 button {
   background: var(--accent-2);
   color: #0b1020;

@@ -10,6 +10,7 @@ const speedToggleBtn = document.getElementById("speed-toggle");
 const openSettingsBtn = document.getElementById("open-settings");
 const settingsModal = document.getElementById("settings-modal");
 const closeSettingsModalBtn = document.getElementById("close-settings-modal");
+const nextWaveLabel = document.getElementById("next-wave-label");
 const towerDetailEl = document.getElementById("tower-detail");
 const versionEl = document.getElementById("version");
 const towerActionsEl = document.getElementById("tower-actions");
@@ -138,6 +139,10 @@ let upgradePreviewRange = null;
 let isPaused = false;
 let speedMultiplier = 1;
 let rebindTarget = null;
+let waveSpawned = 0;
+let waveSpawnTotal = 0;
+let waveSpawning = false;
+let waveFinished = true;
 
 const KEY_ACTIONS = {
   pause: "P",
@@ -182,6 +187,10 @@ function resetGame() {
   upgradePreviewRange = null;
   isPaused = false;
   speedMultiplier = 1;
+  waveSpawned = 0;
+  waveSpawnTotal = 0;
+  waveSpawning = false;
+  waveFinished = true;
   running = false;
   logEl.innerHTML = "";
   appendLog("Játék visszaállítva. Helyezz el tornyokat és indítsd a hullámot!");
@@ -189,6 +198,7 @@ function resetGame() {
   updateTowerActions();
   updateSpeedControls();
   updateTowerDetailPanel();
+  updateControlState();
   draw();
 }
 
@@ -211,6 +221,10 @@ function distance(a, b) {
 function spawnWave() {
   const wave = waves[state.wave];
   if (!wave) return;
+  waveFinished = false;
+  waveSpawning = true;
+  waveSpawned = 0;
+  waveSpawnTotal = wave.count;
   const spawnInterval = 0.85;
   let spawned = 0;
   const scaling = Math.pow(1.08, state.wave);
@@ -238,12 +252,16 @@ function spawnWave() {
     };
     enemies.push(enemy);
     spawned += 1;
+    waveSpawned = spawned;
     if (spawned < wave.count) {
       setTimeout(spawn, spawnInterval * 1000);
+    } else {
+      waveSpawning = false;
     }
   };
   spawn();
   appendLog(`Hullám indítva: ${wave.label}`);
+  updateControlState();
 }
 
 function canPlaceTower(cell) {
@@ -422,10 +440,6 @@ function getUpgradedRange(tower) {
 }
 
 function updateSpeedControls() {
-  if (controlBtn) {
-    controlBtn.textContent = running && !isPaused ? "⏸" : "▶";
-    controlBtn.classList.toggle("active", running && !isPaused);
-  }
   if (speedToggleBtn) {
     speedToggleBtn.textContent = `${speedMultiplier}×`;
     speedToggleBtn.classList.toggle("active", !isPaused);
@@ -436,33 +450,67 @@ function setSpeed(multiplier) {
   speedMultiplier = multiplier;
   isPaused = false;
   updateSpeedControls();
+  updateControlState();
 }
 
 function togglePause() {
   isPaused = !isPaused;
   updateSpeedControls();
+  updateControlState();
+}
+
+function updateControlState() {
+  const lastWaveCompleted = waveFinished && waveSpawnTotal > 0 && state.wave >= waves.length - 1;
+  if (controlBtn) {
+    controlBtn.textContent = running && !isPaused ? "⏸" : "▶";
+    controlBtn.disabled = lastWaveCompleted;
+    controlBtn.classList.toggle("active", running && !isPaused);
+  }
+  if (nextWaveLabel) {
+    if (lastWaveCompleted) {
+      nextWaveLabel.textContent = "Minden hullám teljesítve";
+    } else {
+      const nextWave =
+        waveFinished && waveSpawnTotal > 0
+          ? Math.min(state.wave + 2, waves.length)
+          : Math.min(state.wave + 1, waves.length);
+      nextWaveLabel.textContent = `Következő hullám: ${nextWave}/${waves.length}`;
+    }
+  }
+}
+
+function startNextWave() {
+  if (waveFinished && waveSpawnTotal > 0) {
+    if (state.wave >= waves.length - 1) {
+      updateControlState();
+      return;
+    }
+    state.wave += 1;
+  }
+  running = true;
+  isPaused = false;
+  waveFinished = false;
+  updateSpeedControls();
+  spawnWave();
+  updateControlState();
 }
 
 function handleControlClick() {
+  const lastWaveCompleted = waveFinished && waveSpawnTotal > 0 && state.wave >= waves.length - 1;
+  if (lastWaveCompleted) return;
   if (running && !isPaused) {
     togglePause();
+    updateControlState();
     return;
   }
   if (isPaused) {
     togglePause();
+    updateControlState();
     return;
   }
-  if (!running) {
-    if (state.wave === 0 && enemies.length === 0) {
-      startGame();
-      return;
-    }
-    if (enemies.length === 0 && state.wave < waves.length) {
-      nextWave();
-      return;
-    }
-    running = true;
-    updateSpeedControls();
+  if (!running || waveFinished) {
+    startNextWave();
+    return;
   }
 }
 
@@ -713,13 +761,24 @@ function update(delta) {
   });
   damageTexts = damageTexts.filter((text) => text.elapsed < text.duration);
 
+  if (!waveFinished && !waveSpawning && waveSpawnTotal > 0 && enemies.length === 0) {
+    running = false;
+    isPaused = false;
+    waveFinished = true;
+    updateSpeedControls();
+    updateControlState();
+  }
+
   if (state.health <= 0) {
     running = false;
     appendLog("Elestél. Nyomd meg a Reset gombot az újrakezdéshez.");
   }
 
-  if (running && enemies.length === 0 && state.wave === waves.length - 1) {
+  const lastWaveCompleted = waveFinished && waveSpawnTotal > 0 && state.wave >= waves.length - 1;
+  if (lastWaveCompleted && enemies.length === 0) {
     running = false;
+    waveFinished = true;
+    updateControlState();
     appendLog("Minden hullámot visszavertél – nyomj Resetet az újrakezdéshez!");
   }
 }
@@ -1011,20 +1070,11 @@ function startGame() {
 }
 
 function nextWave() {
-  if (state.wave >= waves.length - 1) {
-    appendLog("Minden hullámot legyőztél – gratulálunk!");
-    return;
-  }
-  if (enemies.length > 0) {
+  if (waveFinished || (!running && enemies.length === 0)) {
+    startNextWave();
+  } else {
     appendLog("Várd meg, amíg az aktuális hullám elfogy.");
-    return;
   }
-  if (!running) running = true;
-  isPaused = false;
-  state.wave += 1;
-  spawnWave();
-  updateStats();
-  updateSpeedControls();
 }
 
 function init() {
