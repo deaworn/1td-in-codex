@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>1TD – Tower Defense prototípus</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="branding">AI-TD</div>
+    <div class="stats" id="stats"></div>
+    <div class="controls controls--minimal">
+      <button id="control-toggle" class="icon-btn" title="Start/Pause" aria-label="Start/Pause">▶</button>
+      <button id="speed-toggle" class="icon-btn" title="Sebesség" aria-label="Sebesség">1×</button>
+      <div class="next-wave-label" id="next-wave-label"></div>
+      <button id="open-settings" class="icon-btn" title="Beállítások" aria-label="Beállítások">⚙️</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="game-frame">
+      <div class="canvas-wrap">
+        <canvas id="game" width="960" height="640"></canvas>
+        <div class="version-pill" id="version"></div>
+      </div>
+      <div class="overlay overlay--loading" id="overlay-loading">
+        <div class="overlay__panel">
+          <h2>TD Classic</h2>
+          <p>Kattints a folytatáshoz</p>
+        </div>
+      </div>
+      <div class="overlay overlay--message" id="overlay-wave">
+        <div class="overlay__panel">
+          <h2>Hullám teljesítve</h2>
+          <p id="overlay-wave-text"></p>
+          <button id="overlay-wave-start">Start</button>
+        </div>
+      </div>
+      <div class="overlay overlay--message" id="overlay-gameover">
+        <div class="overlay__panel">
+          <h2>GAME OVER</h2>
+          <p id="overlay-gameover-text"></p>
+          <button id="overlay-gameover-reset">Reset</button>
+        </div>
+      </div>
+      <div class="overlay overlay--message" id="overlay-victory">
+        <div class="overlay__panel">
+          <h2>GYŐZELEM</h2>
+          <p>Minden hullám teljesítve</p>
+          <button id="overlay-victory-reset">Reset</button>
+        </div>
+      </div>
+      <div class="overlay overlay--message" id="overlay-between">
+        <div class="overlay__panel">
+          <h2>Következő hullám</h2>
+          <p>Kattints a folytatáshoz</p>
+        </div>
+      </div>
+    </section>
+    <aside class="sidebar">
+      <div class="tower-detail" id="tower-detail">
+        <div class="tower-detail__placeholder">Válassz egy tornyot az alsó sávból a részletekhez.</div>
+      </div>
+      <div class="tower-actions tower-actions--hidden" id="tower-actions"></div>
+      <div class="log" id="log"></div>
+    </aside>
+  </main>
+
+  <div class="modal" id="settings-modal" aria-hidden="true">
+    <div class="modal__backdrop"></div>
+    <div class="modal__content">
+      <div class="modal__header">
+        <h3>Beállítások</h3>
+        <button class="icon-btn" id="close-settings-modal" aria-label="Bezárás">✕</button>
+      </div>
+      <div class="modal__body settings-body">
+        <div class="control-row">
+          <button id="start">Start</button>
+          <button id="reset">Reset</button>
+        </div>
+        <div class="settings-panel">
+          <div class="settings__header">
+            <h4>Billentyűk</h4>
+            <div class="settings__status" id="settings-status"></div>
+          </div>
+          <div class="settings__list" id="settings-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="tower-bar">
+    <div class="tower-bar__label">Tornyok</div>
+    <div class="tower-grid tower-grid--compact" id="tower-grid"></div>
+  </footer>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
