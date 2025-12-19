@@ -120,6 +120,13 @@ button:active { transform: translateY(0); }
   grid-template-columns: 3fr 1fr;
   gap: 12px;
   padding: 12px 18px 24px;
+  align-items: start;
+}
+
+.game-frame {
+  position: relative;
+  max-width: 1000px;
+  margin: 0 auto;
 }
 
 .canvas-wrap {
@@ -374,6 +381,40 @@ button:active { transform: translateY(0); }
   height: 220px;
   font-size: 0.9rem;
   overflow-y: auto;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(3px);
+  z-index: 5;
+}
+
+.overlay.active {
+  display: flex;
+}
+
+.overlay__panel {
+  background: rgba(15, 19, 36, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  padding: 18px 22px;
+  text-align: center;
+  min-width: 280px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+}
+
+.overlay__panel h2 {
+  margin: 0 0 8px;
+}
+
+.overlay__panel p {
+  margin: 0 0 12px;
+  color: var(--muted);
 }
 
 .modal {

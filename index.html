@@ -19,9 +19,31 @@
   </header>
 
   <main class="layout">
-    <section class="canvas-wrap">
-      <canvas id="game" width="960" height="640"></canvas>
-      <div class="version-pill" id="version"></div>
+    <section class="game-frame">
+      <div class="canvas-wrap">
+        <canvas id="game" width="960" height="640"></canvas>
+        <div class="version-pill" id="version"></div>
+      </div>
+      <div class="overlay overlay--loading" id="overlay-loading">
+        <div class="overlay__panel">
+          <h2>TD Classic</h2>
+          <p>Betöltés...</p>
+        </div>
+      </div>
+      <div class="overlay overlay--message" id="overlay-wave">
+        <div class="overlay__panel">
+          <h2>Hullám teljesítve</h2>
+          <p id="overlay-wave-text"></p>
+          <button id="overlay-wave-start">Start</button>
+        </div>
+      </div>
+      <div class="overlay overlay--message" id="overlay-gameover">
+        <div class="overlay__panel">
+          <h2>GAME OVER</h2>
+          <p id="overlay-gameover-text"></p>
+          <button id="overlay-gameover-reset">Reset</button>
+        </div>
+      </div>
     </section>
     <aside class="sidebar">
       <div class="tower-detail" id="tower-detail">
