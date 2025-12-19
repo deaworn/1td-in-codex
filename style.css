@@ -49,6 +49,10 @@ body {
   font-size: 22px;
 }
 
+.controls--minimal {
+  gap: 10px;
+}
+
 button {
   background: var(--accent-2);
   color: #0b1020;
@@ -157,6 +161,37 @@ button:active { transform: translateY(0); }
   font-size: 22px;
 }
 
+.tower-detail {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 12px;
+  min-height: 220px;
+  display: grid;
+  gap: 8px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.tower-detail__placeholder {
+  color: var(--muted);
+}
+
+.tower-detail__title {
+  font-size: 18px;
+  margin: 0;
+}
+
+.tower-detail__meta {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.tower-detail__stats {
+  display: grid;
+  gap: 6px;
+  color: #e8ecf5;
+}
+
 .tower-meta { color: var(--muted); font-size: 0.9rem; }
 
 .tower-stats {
@@ -182,6 +217,27 @@ button:active { transform: translateY(0); }
 
 .tower-actions--hidden {
   display: none;
+}
+
+.tower-bar {
+  position: sticky;
+  bottom: 0;
+  width: 100%;
+  background: rgba(13, 15, 26, 0.95);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 10px 16px;
+  display: grid;
+  gap: 8px;
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.35);
+}
+
+.tower-bar__label {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.tower-bar .tower-grid {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
 }
 
 .tower-actions__header {
@@ -336,36 +392,6 @@ button:active { transform: translateY(0); }
 
 .modal__body--split {
   grid-template-columns: 1.2fr 1fr;
-}
-
-.tower-detail {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 12px;
-  padding: 12px;
-  min-height: 220px;
-  display: grid;
-  gap: 8px;
-}
-
-.tower-detail__placeholder {
-  color: var(--muted);
-}
-
-.tower-detail__title {
-  font-size: 18px;
-  margin: 0;
-}
-
-.tower-detail__meta {
-  color: var(--muted);
-  font-size: 0.95rem;
-}
-
-.tower-detail__stats {
-  display: grid;
-  gap: 6px;
-  color: #e8ecf5;
 }
 
 .settings-body {

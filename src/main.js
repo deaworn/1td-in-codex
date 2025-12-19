@@ -7,12 +7,9 @@ const startBtn = document.getElementById("start");
 const nextWaveBtn = document.getElementById("next-wave");
 const resetBtn = document.getElementById("reset");
 const pauseBtn = document.getElementById("pause-toggle");
-const speedButtons = document.querySelectorAll("[data-speed]");
-const openTowersBtn = document.getElementById("open-towers");
+const speedToggleBtn = document.getElementById("speed-toggle");
 const openSettingsBtn = document.getElementById("open-settings");
-const towerModal = document.getElementById("tower-modal");
 const settingsModal = document.getElementById("settings-modal");
-const closeTowerModalBtn = document.getElementById("close-tower-modal");
 const closeSettingsModalBtn = document.getElementById("close-settings-modal");
 const towerDetailEl = document.getElementById("tower-detail");
 const versionEl = document.getElementById("version");
@@ -20,7 +17,7 @@ const towerActionsEl = document.getElementById("tower-actions");
 const settingsListEl = document.getElementById("settings-list");
 const settingsStatusEl = document.getElementById("settings-status");
 
-const GAME_VERSION = "v0.5.1";
+const GAME_VERSION = "v0.5.2";
 const CANVAS_WIDTH = 960;
 const CANVAS_HEIGHT = 640;
 const gridSize = 40;
@@ -192,6 +189,7 @@ function resetGame() {
   updateStats();
   updateTowerActions();
   updateSpeedControls();
+  updateTowerDetailPanel();
   draw();
 }
 
@@ -291,6 +289,7 @@ function clearSelectionAndPlacement() {
   upgradePreviewRange = null;
   clearActiveTowerSelection();
   updateTowerActions();
+  updateTowerDetailPanel();
   draw();
 }
 
@@ -316,6 +315,7 @@ function handleCanvasClick(evt) {
     upgradePreviewRange = null;
     clearActiveTowerSelection();
     updateTowerActions();
+    updateTowerDetailPanel();
     draw();
     return;
   }
@@ -367,10 +367,9 @@ function setActiveTowerByIndex(index) {
   selectedTower = null;
   hoverCell = null;
   upgradePreviewRange = null;
-  renderTowerDetail(towerTypes[index]);
+  updateTowerDetailPanel();
   updateTowerGridHighlight();
   updateTowerActions();
-  hideModal(towerModal);
 }
 
 function updateTowerGridHighlight() {
@@ -397,6 +396,7 @@ function upgradeSelectedTower() {
   appendLog(`${selectedTower.name} fejlesztve (szint ${selectedTower.level}).`);
   updateStats();
   updateTowerActions();
+  updateTowerDetailPanel();
   draw();
 }
 
@@ -427,11 +427,10 @@ function updateSpeedControls() {
     pauseBtn.textContent = isPaused ? "▶" : "⏸";
     pauseBtn.classList.toggle("active", isPaused);
   }
-  speedButtons.forEach((btn) => {
-    const target = Number(btn.dataset.speed);
-    const isActive = !isPaused && speedMultiplier === target;
-    btn.classList.toggle("active", isActive);
-  });
+  if (speedToggleBtn) {
+    speedToggleBtn.textContent = `${speedMultiplier}×`;
+    speedToggleBtn.classList.toggle("active", !isPaused);
+  }
 }
 
 function setSpeed(multiplier) {
@@ -534,9 +533,8 @@ function handleKeyDown(evt) {
     handleRebind(evt.key);
     return;
   }
-  if (towerModal?.classList.contains("active") || settingsModal?.classList.contains("active")) {
+  if (settingsModal?.classList.contains("active")) {
     if (evt.key === "Escape") {
-      hideModal(towerModal);
       hideModal(settingsModal);
     }
     return;
@@ -576,29 +574,35 @@ function renderSettings() {
   });
 }
 
-function renderTowerDetail(tower) {
+function updateTowerDetailPanel() {
   if (!towerDetailEl) return;
-  if (!tower) {
-    towerDetailEl.innerHTML = '<div class="tower-detail__placeholder">Válassz egy tornyot a részletekhez.</div>';
+  const sourceTower = selectedTower || activeTower;
+  if (!sourceTower) {
+    towerDetailEl.innerHTML =
+      '<div class="tower-detail__placeholder">Válassz egy tornyot az alsó sávból vagy jelölj ki egy lerakott tornyot.</div>';
     return;
   }
+  const levelText = selectedTower ? ` (Szint ${selectedTower.level || 1})` : "";
   towerDetailEl.innerHTML = `
-    <div class="tower-detail__badge" style="color:${tower.color}">● ${tower.name}</div>
-    <h4 class="tower-detail__title">${tower.name}</h4>
-    <div class="tower-detail__meta">${tower.description}</div>
+    <div class="tower-detail__badge" style="color:${sourceTower.color}">● ${sourceTower.name}${levelText}</div>
+    <h4 class="tower-detail__title">${sourceTower.name}</h4>
+    <div class="tower-detail__meta">${sourceTower.description}</div>
     <div class="tower-detail__stats">
-      <span>Ár: <strong>${tower.cost} kredit</strong></span>
-      <span>DMG: ${tower.damage}</span>
-      <span>Hatótáv: ${tower.range}</span>
-      <span>Tűzgyorsaság: ${tower.fireRate.toFixed(1)}/s</span>
+      <span>Ár: <strong>${sourceTower.baseCost || sourceTower.cost} kredit</strong></span>
+      <span>DMG: ${sourceTower.damage}</span>
+      <span>Hatótáv: ${sourceTower.range}</span>
+      <span>Tűzgyorsaság: ${sourceTower.fireRate.toFixed(1)}/s</span>
     </div>
-    <button class="upgrade-btn" data-select-tower="${tower.id}">Választ</button>
+    ${
+      !selectedTower
+        ? `<button class="upgrade-btn" data-select-tower="${sourceTower.id}">Kiválaszt</button>`
+        : ""
+    }
   `;
   const selectBtn = towerDetailEl.querySelector("[data-select-tower]");
   if (selectBtn) {
     selectBtn.onclick = () => {
-      setActiveTowerByIndex(towerTypes.findIndex((t) => t.id === tower.id));
-      hideModal(towerModal);
+      setActiveTowerByIndex(towerTypes.findIndex((t) => t.id === sourceTower.id));
     };
   }
 }
@@ -910,6 +914,7 @@ function updateTowerActions() {
     upgradePreviewRange = null;
     towerActionsEl.classList.add("tower-actions--hidden");
     towerActionsEl.innerHTML = "";
+    updateTowerDetailPanel();
     return;
   }
   towerActionsEl.classList.remove("tower-actions--hidden");
@@ -945,6 +950,7 @@ function updateTowerActions() {
   } else {
     upgradePreviewRange = null;
   }
+  updateTowerDetailPanel();
 }
 
 function buildTowerGrid() {
@@ -958,14 +964,19 @@ function buildTowerGrid() {
       <h3>${tower.name}</h3>
     `;
     card.onclick = () => {
-      renderTowerDetail(tower);
+      activeTower = tower;
+      selectedTower = null;
+      hoverCell = null;
+      upgradePreviewRange = null;
+      updateTowerDetailPanel();
+      updateTowerActions();
       Array.from(towerGrid.children).forEach((c) => c.classList.remove("active"));
       card.classList.add("active");
     };
     if (activeTower && tower.id === activeTower.id) card.classList.add("active");
     towerGrid.appendChild(card);
   });
-  renderTowerDetail(null);
+  updateTowerDetailPanel();
 }
 
 function startGame() {
@@ -1011,16 +1022,14 @@ function init() {
       togglePause();
     });
   }
-  speedButtons.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      setSpeed(Number(btn.dataset.speed));
+  if (speedToggleBtn) {
+    speedToggleBtn.addEventListener("click", () => {
+      const next = speedMultiplier === 1 ? 1.5 : speedMultiplier === 1.5 ? 2 : 1;
+      setSpeed(next);
     });
-  });
-  if (openTowersBtn) openTowersBtn.addEventListener("click", () => showModal(towerModal));
+  }
   if (openSettingsBtn) openSettingsBtn.addEventListener("click", () => showModal(settingsModal));
-  if (closeTowerModalBtn) closeTowerModalBtn.addEventListener("click", () => hideModal(towerModal));
   if (closeSettingsModalBtn) closeSettingsModalBtn.addEventListener("click", () => hideModal(settingsModal));
-  towerModal?.querySelector(".modal__backdrop")?.addEventListener("click", () => hideModal(towerModal));
   settingsModal?.querySelector(".modal__backdrop")?.addEventListener("click", () => hideModal(settingsModal));
   renderSettings();
   updateSpeedControls();
