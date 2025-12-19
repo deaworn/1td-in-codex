@@ -24,7 +24,7 @@ const towerActionsEl = document.getElementById("tower-actions");
 const settingsListEl = document.getElementById("settings-list");
 const settingsStatusEl = document.getElementById("settings-status");
 
-const GAME_VERSION = "v0.5.6";
+const GAME_VERSION = "v0.5.7";
 const CANVAS_WIDTH = 960;
 const CANVAS_HEIGHT = 640;
 const gridSize = 40;
@@ -150,7 +150,7 @@ let waveSpawned = 0;
 let waveSpawnTotal = 0;
 let waveSpawning = false;
 let waveFinished = true;
-let gameState = "loading"; // loading | ready | running | waveEnd | gameOver
+let gameState = "loading"; // loading | ready | playing | gameover
 
 const KEY_ACTIONS = {
   pause: "P",
@@ -327,6 +327,23 @@ function hideOverlay(overlay) {
   overlay.classList.remove("active");
 }
 
+function showWaveOverlay(nextWave, isFinal = false) {
+  if (!overlayWave || !overlayWaveText) return;
+  if (isFinal) {
+    overlayWaveText.textContent = "Minden hullám teljesítve";
+  } else {
+    overlayWaveText.textContent = `Következő hullám: ${nextWave}/${waves.length}`;
+  }
+  if (overlayWaveStart) {
+    overlayWaveStart.disabled = isFinal;
+  }
+  showOverlay(overlayWave);
+}
+
+function hideWaveOverlay() {
+  hideOverlay(overlayWave);
+}
+
 function showModal(modal) {
   if (!modal) return;
   modal.classList.add("active");
@@ -481,48 +498,29 @@ function setGameState(newState) {
   switch (newState) {
     case "loading":
       showOverlay(overlayLoading);
-      hideOverlay(overlayWave);
+      hideWaveOverlay();
       hideOverlay(overlayGameOver);
       break;
     case "ready":
       hideOverlay(overlayLoading);
-      hideOverlay(overlayWave);
+      hideWaveOverlay();
       hideOverlay(overlayGameOver);
       running = false;
       isPaused = false;
       break;
-    case "running":
-      hideOverlay(overlayWave);
+    case "playing":
+      hideWaveOverlay();
       hideOverlay(overlayGameOver);
       running = true;
       isPaused = false;
       break;
-    case "waveEnd":
-      running = false;
-      isPaused = false;
-      if (overlayWaveText) {
-        const lastWaveCompleted = waveFinished && waveSpawnTotal > 0 && state.wave >= waves.length - 1;
-        if (lastWaveCompleted) {
-          overlayWaveText.textContent = "Minden hullám teljesítve";
-        } else {
-          const nextWave = Math.min(state.wave + (waveSpawnTotal > 0 ? 2 : 1), waves.length);
-          overlayWaveText.textContent = `Következő hullám: ${nextWave}/${waves.length}`;
-        }
-      }
-      if (overlayWaveStart) {
-        const lastWaveCompleted = waveFinished && waveSpawnTotal > 0 && state.wave >= waves.length - 1;
-        overlayWaveStart.disabled = lastWaveCompleted;
-      }
-      showOverlay(overlayWave);
-      hideOverlay(overlayGameOver);
-      break;
-    case "gameOver":
+    case "gameover":
       running = false;
       isPaused = false;
       if (overlayGameOverText) {
         overlayGameOverText.textContent = `Elért hullám: ${state.wave + 1}`;
       }
-      hideOverlay(overlayWave);
+      hideWaveOverlay();
       showOverlay(overlayGameOver);
       break;
     default:
@@ -534,17 +532,17 @@ function setGameState(newState) {
 function updateControlState() {
   const lastWaveCompleted = waveFinished && waveSpawnTotal > 0 && state.wave >= waves.length - 1;
   const hasStarted = waveSpawnTotal > 0 || state.wave > 0;
-  const isPlaying = gameState === "running" && !isPaused;
+  const isPlaying = gameState === "playing" && !isPaused;
   if (controlBtn) {
     controlBtn.textContent = isPlaying ? "⏸" : "▶";
-    controlBtn.disabled = gameState === "gameOver" || lastWaveCompleted || gameState === "loading";
+    controlBtn.disabled = gameState === "gameover" || lastWaveCompleted || gameState === "loading";
     controlBtn.classList.toggle("active", isPlaying);
   }
   if (overlayWaveStart) {
     overlayWaveStart.disabled = controlBtn ? controlBtn.disabled : lastWaveCompleted;
   }
   if (nextWaveLabel) {
-    if (gameState === "gameOver") {
+    if (gameState === "gameover") {
       nextWaveLabel.textContent = "GAME OVER";
     } else if (lastWaveCompleted) {
       nextWaveLabel.textContent = "Minden hullám teljesítve";
@@ -567,24 +565,24 @@ function startNextWave() {
     state.wave += 1;
   }
   waveFinished = false;
-  setGameState("running");
+  setGameState("playing");
   spawnWave();
 }
 
 function handleControlClick() {
   const lastWaveCompleted = waveFinished && waveSpawnTotal > 0 && state.wave >= waves.length - 1;
   if (lastWaveCompleted) return;
-  if (running && !isPaused) {
+  if (running && !isPaused && gameState === "playing") {
     togglePause();
     updateControlState();
     return;
   }
-  if (isPaused) {
+  if (isPaused && gameState === "playing") {
     togglePause();
     updateControlState();
     return;
   }
-  if (!running || waveFinished || gameState === "ready" || gameState === "waveEnd") {
+  if (!running || waveFinished || gameState === "ready") {
     startNextWave();
     return;
   }
@@ -841,21 +839,29 @@ function update(delta) {
     running = false;
     isPaused = false;
     waveFinished = true;
-    setGameState("waveEnd");
+    const nextWave = Math.min(state.wave + (waveSpawnTotal > 0 ? 2 : 1), waves.length);
+    const lastWaveDone = state.wave >= waves.length - 1;
+    if (lastWaveDone) {
+      showWaveOverlay(nextWave, true);
+    } else {
+      showWaveOverlay(nextWave, false);
+    }
+    setGameState("ready");
   }
 
   if (state.health <= 0) {
     running = false;
     waveFinished = true;
     appendLog("Elestél. Nyomd meg a Reset gombot az újrakezdéshez.");
-    setGameState("gameOver");
+    setGameState("gameover");
   }
 
   const lastWaveCompleted = waveFinished && waveSpawnTotal > 0 && state.wave >= waves.length - 1;
   if (lastWaveCompleted && enemies.length === 0) {
     running = false;
     waveFinished = true;
-    setGameState("waveEnd");
+    showWaveOverlay(state.wave + 1, true);
+    setGameState("ready");
     appendLog("Minden hullámot visszavertél – nyomj Resetet az újrakezdéshez!");
   }
 }
@@ -1153,10 +1159,10 @@ function nextWave() {
 }
 
 function init() {
-  setGameState("loading");
   versionEl.textContent = GAME_VERSION;
   buildTowerGrid();
   resetGame();
+  hideOverlay(overlayLoading);
   canvas.addEventListener("click", handleCanvasClick);
   canvas.addEventListener("mousemove", handleCanvasMouseMove);
   canvas.addEventListener("mouseleave", handleCanvasMouseLeave);
