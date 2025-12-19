@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>1TD – Tower Defense prototípus</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="branding">AI-TD</div>
+    <div class="stats" id="stats"></div>
+    <div class="controls controls--minimal">
+      <button id="open-towers" class="icon-btn" title="Tornyok" aria-label="Tornyok">🛰️</button>
+      <button id="open-settings" class="icon-btn" title="Beállítások" aria-label="Beállítások">⚙️</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="canvas-wrap">
+      <canvas id="game" width="960" height="640"></canvas>
+      <div class="version-pill" id="version"></div>
+    </section>
+    <aside class="sidebar">
+      <div class="tower-actions tower-actions--hidden" id="tower-actions"></div>
+      <div class="log" id="log"></div>
+    </aside>
+  </main>
+
+  <div class="modal" id="tower-modal" aria-hidden="true">
+    <div class="modal__backdrop"></div>
+    <div class="modal__content">
+      <div class="modal__header">
+        <h3>Tornyok</h3>
+        <button class="icon-btn" id="close-tower-modal" aria-label="Bezárás">✕</button>
+      </div>
+      <div class="modal__body modal__body--split">
+        <div class="tower-grid tower-grid--compact" id="tower-grid"></div>
+        <div class="tower-detail" id="tower-detail">
+          <div class="tower-detail__placeholder">Válassz egy tornyot a részletekhez.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="settings-modal" aria-hidden="true">
+    <div class="modal__backdrop"></div>
+    <div class="modal__content">
+      <div class="modal__header">
+        <h3>Beállítások</h3>
+        <button class="icon-btn" id="close-settings-modal" aria-label="Bezárás">✕</button>
+      </div>
+      <div class="modal__body settings-body">
+        <div class="control-row">
+          <button id="start">Start</button>
+          <button id="next-wave">Következő hullám</button>
+          <button id="reset">Reset</button>
+        </div>
+        <div class="control-row">
+          <button id="pause-toggle" class="icon-btn" title="Pause/Resume" aria-label="Pause/Resume">⏸</button>
+          <div class="speed-controls" aria-label="Játékmenet vezérlés">
+            <button data-speed="1" class="icon-btn speed-btn" aria-label="1x sebesség">①</button>
+            <button data-speed="1.5" class="icon-btn speed-btn" aria-label="1.5x sebesség">➀.⑤</button>
+            <button data-speed="2" class="icon-btn speed-btn" aria-label="2x sebesség">②</button>
+          </div>
+        </div>
+        <div class="settings-panel">
+          <div class="settings__header">
+            <h4>Billentyűk</h4>
+            <div class="settings__status" id="settings-status"></div>
+          </div>
+          <div class="settings__list" id="settings-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
