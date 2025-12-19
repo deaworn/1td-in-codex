@@ -53,6 +53,11 @@ body {
   gap: 10px;
 }
 
+.controls--minimal .icon-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
 button {
   background: var(--accent-2);
   color: #0b1020;
@@ -143,7 +148,8 @@ button:active { transform: translateY(0); }
   border-radius: 12px;
   padding: 10px;
   display: grid;
-  gap: 4px;
+  grid-template-columns: 48px 1fr;
+  gap: 10px;
   cursor: pointer;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
@@ -153,12 +159,29 @@ button:active { transform: translateY(0); }
   box-shadow: 0 0 0 2px rgba(90, 208, 255, 0.25);
 }
 
-.tower-card h3 {
-  margin: 0;
+.tower-card__icon {
+  font-size: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
 }
 
-.tower-icon {
-  font-size: 22px;
+.tower-card__info {
+  display: grid;
+  gap: 6px;
+  align-content: center;
+}
+
+.tower-card__name {
+  margin: 0;
+  color: #f4f7ff;
+  font-size: 1rem;
+}
+
+.tower-card__price {
+  color: #f4f7ff;
+  font-weight: 700;
 }
 
 .tower-detail {
@@ -237,7 +260,7 @@ button:active { transform: translateY(0); }
 }
 
 .tower-bar .tower-grid {
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
 }
 
 .tower-actions__header {
@@ -467,6 +490,10 @@ button:active { transform: translateY(0); }
   border-radius: 20px;
   padding: 6px 10px;
   font-weight: 600;
+}
+
+.badge__icon {
+  opacity: 0.9;
 }
 
 .badge strong { color: var(--text); }

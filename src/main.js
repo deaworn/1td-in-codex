@@ -4,9 +4,8 @@ const statsEl = document.getElementById("stats");
 const logEl = document.getElementById("log");
 const towerGrid = document.getElementById("tower-grid");
 const startBtn = document.getElementById("start");
-const nextWaveBtn = document.getElementById("next-wave");
 const resetBtn = document.getElementById("reset");
-const pauseBtn = document.getElementById("pause-toggle");
+const controlBtn = document.getElementById("control-toggle");
 const speedToggleBtn = document.getElementById("speed-toggle");
 const openSettingsBtn = document.getElementById("open-settings");
 const settingsModal = document.getElementById("settings-modal");
@@ -17,7 +16,7 @@ const towerActionsEl = document.getElementById("tower-actions");
 const settingsListEl = document.getElementById("settings-list");
 const settingsStatusEl = document.getElementById("settings-status");
 
-const GAME_VERSION = "v0.5.2";
+const GAME_VERSION = "v0.5.3";
 const CANVAS_WIDTH = 960;
 const CANVAS_HEIGHT = 640;
 const gridSize = 40;
@@ -423,9 +422,9 @@ function getUpgradedRange(tower) {
 }
 
 function updateSpeedControls() {
-  if (pauseBtn) {
-    pauseBtn.textContent = isPaused ? "▶" : "⏸";
-    pauseBtn.classList.toggle("active", isPaused);
+  if (controlBtn) {
+    controlBtn.textContent = running && !isPaused ? "⏸" : "▶";
+    controlBtn.classList.toggle("active", running && !isPaused);
   }
   if (speedToggleBtn) {
     speedToggleBtn.textContent = `${speedMultiplier}×`;
@@ -442,6 +441,29 @@ function setSpeed(multiplier) {
 function togglePause() {
   isPaused = !isPaused;
   updateSpeedControls();
+}
+
+function handleControlClick() {
+  if (running && !isPaused) {
+    togglePause();
+    return;
+  }
+  if (isPaused) {
+    togglePause();
+    return;
+  }
+  if (!running) {
+    if (state.wave === 0 && enemies.length === 0) {
+      startGame();
+      return;
+    }
+    if (enemies.length === 0 && state.wave < waves.length) {
+      nextWave();
+      return;
+    }
+    running = true;
+    updateSpeedControls();
+  }
 }
 
 function normalizeKey(key) {
@@ -500,9 +522,7 @@ function handleAction(action) {
       if (speedMultiplier > 1) setSpeed(speedMultiplier === 2 ? 1.5 : 1);
       break;
     case "start":
-      isPaused = false;
-      updateSpeedControls();
-      startGame();
+      handleControlClick();
       break;
     case "nextWave":
       nextWave();
@@ -588,7 +608,7 @@ function updateTowerDetailPanel() {
     <h4 class="tower-detail__title">${sourceTower.name}</h4>
     <div class="tower-detail__meta">${sourceTower.description}</div>
     <div class="tower-detail__stats">
-      <span>Ár: <strong>${sourceTower.baseCost || sourceTower.cost} kredit</strong></span>
+      <span>Ár: <strong>🪙 ${sourceTower.baseCost || sourceTower.cost}</strong></span>
       <span>DMG: ${sourceTower.damage}</span>
       <span>Hatótáv: ${sourceTower.range}</span>
       <span>Tűzgyorsaság: ${sourceTower.fireRate.toFixed(1)}/s</span>
@@ -902,9 +922,9 @@ function animate() {
 function updateStats() {
   const healthClass = state.health <= 5 ? "health-low" : "";
   statsEl.innerHTML = `
-    <span class="badge">Élet: <strong class="${healthClass}">${state.health}</strong></span>
-    <span class="badge">Kredit: <strong>${state.money}</strong></span>
-    <span class="badge">Hullám: <strong>${state.wave + 1}/${waves.length}</strong></span>
+    <span class="badge"><span class="badge__icon">❤</span><strong class="${healthClass}">${state.health}</strong></span>
+    <span class="badge"><span class="badge__icon">🪙</span><strong>${state.money}</strong></span>
+    <span class="badge"><span class="badge__icon">▶</span><strong>${state.wave + 1}/${waves.length}</strong></span>
   `;
 }
 
@@ -960,8 +980,11 @@ function buildTowerGrid() {
     card.className = "tower-card";
     card.dataset.towerId = tower.id;
     card.innerHTML = `
-      <div class="tower-icon" style="color:${tower.color}">●</div>
-      <h3>${tower.name}</h3>
+      <div class="tower-card__icon" style="color:${tower.color}">●</div>
+      <div class="tower-card__info">
+        <h3 class="tower-card__name">${tower.name}</h3>
+        <div class="tower-card__price">🪙 ${tower.cost}</div>
+      </div>
     `;
     card.onclick = () => {
       activeTower = tower;
@@ -997,9 +1020,11 @@ function nextWave() {
     return;
   }
   if (!running) running = true;
+  isPaused = false;
   state.wave += 1;
   spawnWave();
   updateStats();
+  updateSpeedControls();
 }
 
 function init() {
@@ -1010,17 +1035,14 @@ function init() {
   canvas.addEventListener("mousemove", handleCanvasMouseMove);
   canvas.addEventListener("mouseleave", handleCanvasMouseLeave);
   document.addEventListener("keydown", handleKeyDown);
-  startBtn.addEventListener("click", () => {
-    isPaused = false;
-    updateSpeedControls();
-    if (!running) startGame();
-  });
-  nextWaveBtn.addEventListener("click", nextWave);
-  resetBtn.addEventListener("click", resetGame);
-  if (pauseBtn) {
-    pauseBtn.addEventListener("click", () => {
-      togglePause();
+  if (startBtn) {
+    startBtn.addEventListener("click", () => {
+      handleControlClick();
     });
+  }
+  resetBtn.addEventListener("click", resetGame);
+  if (controlBtn) {
+    controlBtn.addEventListener("click", handleControlClick);
   }
   if (speedToggleBtn) {
     speedToggleBtn.addEventListener("click", () => {
