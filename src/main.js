@@ -20,13 +20,14 @@ const overlayGameOverText = document.getElementById("overlay-gameover-text");
 const overlayGameOverReset = document.getElementById("overlay-gameover-reset");
 const overlayVictory = document.getElementById("overlay-victory");
 const overlayVictoryReset = document.getElementById("overlay-victory-reset");
+const overlayBetween = document.getElementById("overlay-between");
 const towerDetailEl = document.getElementById("tower-detail");
 const versionEl = document.getElementById("version");
 const towerActionsEl = document.getElementById("tower-actions");
 const settingsListEl = document.getElementById("settings-list");
 const settingsStatusEl = document.getElementById("settings-status");
 
-const GAME_VERSION = "v0.5.8";
+const GAME_VERSION = "v0.5.9";
 const CANVAS_WIDTH = 960;
 const CANVAS_HEIGHT = 640;
 const gridSize = 40;
@@ -152,17 +153,17 @@ let waveSpawned = 0;
 let waveSpawnTotal = 0;
 let waveSpawning = false;
 let waveFinished = true;
-const GAME_STATES = {
-  LOADING: "LOADING",
-  IDLE: "IDLE",
-  RUNNING: "RUNNING",
-  WAVE_END: "WAVE_END",
-  VICTORY: "VICTORY",
-  GAME_OVER: "GAME_OVER",
-  PAUSED: "PAUSED",
+const GAME_PHASES = {
+  LOADING: "loading",
+  BUILD: "build",
+  WAVE: "wave",
+  BETWEEN: "betweenWaves",
+  VICTORY: "victory",
+  GAME_OVER: "gameOver",
+  PAUSED: "paused",
 };
 
-let gameState = GAME_STATES.LOADING;
+let gamePhase = GAME_PHASES.LOADING;
 
 const KEY_ACTIONS = {
   pause: "P",
@@ -217,7 +218,7 @@ function resetGame() {
   updateTowerActions();
   updateSpeedControls();
   updateTowerDetailPanel();
-  setGameState(GAME_STATES.LOADING);
+  setGamePhase(GAME_PHASES.LOADING);
   draw();
 }
 
@@ -356,10 +357,20 @@ function hideWaveOverlay() {
   hideOverlay(overlayWave);
 }
 
+function showBetweenOverlay() {
+  if (!overlayBetween) return;
+  showOverlay(overlayBetween);
+}
+
+function hideBetweenOverlay() {
+  if (!overlayBetween) return;
+  hideOverlay(overlayBetween);
+}
+
 function enterIdleFromLoading() {
-  if (gameState !== GAME_STATES.LOADING) return;
+  if (gamePhase !== GAME_PHASES.LOADING) return;
   hideOverlay(overlayLoading);
-  setGameState(GAME_STATES.IDLE);
+  setGamePhase(GAME_PHASES.BUILD);
 }
 
 function showModal(modal) {
@@ -511,59 +522,63 @@ function togglePause() {
   updateControlState();
 }
 
-function setGameState(newState) {
-  gameState = newState;
-  switch (newState) {
-    case GAME_STATES.LOADING:
+function setGamePhase(newPhase) {
+  gamePhase = newPhase;
+  switch (newPhase) {
+    case GAME_PHASES.LOADING:
       showOverlay(overlayLoading);
       hideWaveOverlay();
       hideOverlay(overlayGameOver);
       hideOverlay(overlayVictory);
+      hideBetweenOverlay();
+      running = false;
       break;
-    case GAME_STATES.IDLE:
+    case GAME_PHASES.BUILD:
       hideOverlay(overlayLoading);
       hideWaveOverlay();
       hideOverlay(overlayGameOver);
       hideOverlay(overlayVictory);
+      hideBetweenOverlay();
       running = false;
       isPaused = false;
       break;
-    case GAME_STATES.RUNNING:
+    case GAME_PHASES.WAVE:
       hideWaveOverlay();
       hideOverlay(overlayGameOver);
       hideOverlay(overlayVictory);
+      hideBetweenOverlay();
       running = true;
       isPaused = false;
       break;
-    case GAME_STATES.PAUSED:
-      running = true;
-      isPaused = true;
-      break;
-    case GAME_STATES.WAVE_END: {
+    case GAME_PHASES.BETWEEN:
       running = false;
       isPaused = false;
-      const nextWave = Math.min(state.wave + (waveSpawnTotal > 0 ? 2 : 1), waves.length);
-      const lastWaveCompleted = waveFinished && waveSpawnTotal > 0 && state.wave >= waves.length - 1;
-      showWaveOverlay(nextWave, lastWaveCompleted);
+      showBetweenOverlay();
       hideOverlay(overlayGameOver);
       hideOverlay(overlayVictory);
       break;
-    }
-    case GAME_STATES.VICTORY:
+    case GAME_PHASES.VICTORY:
       running = false;
       isPaused = false;
       hideWaveOverlay();
       hideOverlay(overlayGameOver);
+      hideBetweenOverlay();
       showOverlay(overlayVictory);
       break;
-    case GAME_STATES.GAME_OVER:
+    case GAME_PHASES.GAME_OVER:
       running = false;
       isPaused = false;
       if (overlayGameOverText) {
         overlayGameOverText.textContent = `Elért hullám: ${state.wave + 1}`;
       }
       hideWaveOverlay();
+      hideOverlay(overlayVictory);
+      hideBetweenOverlay();
       showOverlay(overlayGameOver);
+      break;
+    case GAME_PHASES.PAUSED:
+      running = true;
+      isPaused = true;
       break;
     default:
       break;
@@ -574,13 +589,14 @@ function setGameState(newState) {
 function updateControlState() {
   const lastWaveCompleted = waveFinished && waveSpawnTotal > 0 && state.wave >= waves.length - 1;
   const hasStarted = waveSpawnTotal > 0 || state.wave > 0;
-  const isPlaying = gameState === "playing" && !isPaused;
+  const isPlaying = gamePhase === GAME_PHASES.WAVE && !isPaused;
   if (controlBtn) {
     controlBtn.textContent = isPlaying ? "⏸" : "▶";
     controlBtn.disabled =
-      gameState === GAME_STATES.GAME_OVER ||
-      gameState === GAME_STATES.VICTORY ||
-      gameState === GAME_STATES.LOADING ||
+      gamePhase === GAME_PHASES.GAME_OVER ||
+      gamePhase === GAME_PHASES.VICTORY ||
+      gamePhase === GAME_PHASES.LOADING ||
+      gamePhase === GAME_PHASES.BETWEEN ||
       lastWaveCompleted;
     controlBtn.classList.toggle("active", isPlaying);
   }
@@ -588,13 +604,13 @@ function updateControlState() {
     overlayWaveStart.disabled = controlBtn ? controlBtn.disabled : lastWaveCompleted;
   }
   if (nextWaveLabel) {
-    if (gameState === GAME_STATES.GAME_OVER) {
+    if (gamePhase === GAME_PHASES.GAME_OVER) {
       nextWaveLabel.textContent = "GAME OVER";
-    } else if (gameState === GAME_STATES.VICTORY) {
+    } else if (gamePhase === GAME_PHASES.VICTORY) {
       nextWaveLabel.textContent = "GYŐZELEM";
     } else if (lastWaveCompleted) {
       nextWaveLabel.textContent = "Minden hullám teljesítve";
-    } else if (gameState === GAME_STATES.LOADING) {
+    } else if (gamePhase === GAME_PHASES.LOADING) {
       nextWaveLabel.textContent = "Betöltés...";
     } else {
       const nextIndex = waveFinished && hasStarted ? state.wave + 1 : state.wave;
@@ -613,24 +629,24 @@ function startNextWave() {
     state.wave += 1;
   }
   waveFinished = false;
-  setGameState(GAME_STATES.RUNNING);
+  setGamePhase(GAME_PHASES.WAVE);
   spawnWave();
 }
 
 function handleControlClick() {
   const lastWaveCompleted = waveFinished && waveSpawnTotal > 0 && state.wave >= waves.length - 1;
   if (lastWaveCompleted) return;
-  if (gameState === GAME_STATES.RUNNING && !isPaused) {
-    setGameState(GAME_STATES.PAUSED);
+  if (gamePhase === GAME_PHASES.WAVE && !isPaused) {
+    setGamePhase(GAME_PHASES.PAUSED);
     updateControlState();
     return;
   }
-  if (gameState === GAME_STATES.PAUSED) {
-    setGameState(GAME_STATES.RUNNING);
+  if (gamePhase === GAME_PHASES.PAUSED) {
+    setGamePhase(GAME_PHASES.WAVE);
     updateControlState();
     return;
   }
-  if (gameState === GAME_STATES.IDLE || waveFinished) {
+  if (gamePhase === GAME_PHASES.IDLE) {
     startNextWave();
     return;
   }
@@ -723,7 +739,7 @@ function handleKeyDown(evt) {
     handleRebind(evt.key);
     return;
   }
-  if (gameState === GAME_STATES.LOADING && (evt.key === "Enter" || evt.key === " ")) {
+  if (gamePhase === GAME_PHASES.LOADING && (evt.key === "Enter" || evt.key === " ")) {
     evt.preventDefault();
     enterIdleFromLoading();
     return;
@@ -804,89 +820,93 @@ function updateTowerDetailPanel() {
 
 function update(delta) {
   state.time += delta;
-  enemies.forEach((enemy) => {
-    const slowFactor = enemy.slowTimer > 0 ? enemy.slowStrength || 0.6 : 1;
-    enemy.slowTimer = Math.max(0, enemy.slowTimer - delta);
-    if (enemy.slowTimer === 0) {
-      enemy.slowStrength = 1;
-    }
-    const speed = enemy.speed * slowFactor;
-    const nextIdx = Math.min(path.length - 1, enemy.pathIndex + 1);
-    const from = path[enemy.pathIndex];
-    const to = path[nextIdx];
-    const dir = { x: to.x - from.x, y: to.y - from.y };
-    const segLength = Math.hypot(dir.x, dir.y);
-    if (segLength === 0) return;
-    const step = (speed * delta) / segLength;
-    enemy.progress += step;
-    if (enemy.progress >= 1) {
-      enemy.pathIndex += 1;
-      enemy.progress = 0;
-      if (enemy.pathIndex >= path.length - 1) {
-        enemy.reachedEnd = true;
+
+  const simulate = gamePhase === GAME_PHASES.WAVE && !isPaused;
+  if (simulate) {
+    enemies.forEach((enemy) => {
+      const slowFactor = enemy.slowTimer > 0 ? enemy.slowStrength || 0.6 : 1;
+      enemy.slowTimer = Math.max(0, enemy.slowTimer - delta);
+      if (enemy.slowTimer === 0) {
+        enemy.slowStrength = 1;
       }
-    }
-    const base = path[enemy.pathIndex];
-    const next = path[Math.min(path.length - 1, enemy.pathIndex + 1)];
-    enemy.x = lerp(base.x, next.x, enemy.progress);
-    enemy.y = lerp(base.y, next.y, enemy.progress);
-  });
-
-  enemies = enemies.filter((enemy) => {
-    if (enemy.reachedEnd) {
-      state.health -= 1;
-      appendLog("Egy egység áttört a védelmen!");
-      updateStats();
-      return false;
-    }
-    if (enemy.hp <= 0) {
-      state.money += enemy.reward;
-      updateStats();
-      return false;
-    }
-    return true;
-  });
-
-  towers.forEach((tower) => {
-    tower.cooldown -= delta;
-    const target = enemies
-      .filter((e) => distance(e, tower) <= tower.range)
-      .sort((a, b) => b.pathIndex - a.pathIndex || b.progress - a.progress)[0];
-    if (target && tower.cooldown <= 0) {
-      shoot(tower, target);
-    }
-  });
-
-  projectiles.forEach((proj) => {
-    proj.x += proj.vx * delta;
-    proj.y += proj.vy * delta;
-    proj.life -= delta;
-    const hit = enemies.find((e) => distance(e, proj) < e.radius);
-    if (hit) {
-      const damageAmount = Math.min(proj.damage, hit.hp);
-      hit.hp -= proj.damage;
-      if (proj.slow) {
-        hit.slowTimer = proj.slowTime;
-        hit.slowStrength = Math.min(proj.slow, 0.6);
+      const speed = enemy.speed * slowFactor;
+      const nextIdx = Math.min(path.length - 1, enemy.pathIndex + 1);
+      const from = path[enemy.pathIndex];
+      const to = path[nextIdx];
+      const dir = { x: to.x - from.x, y: to.y - from.y };
+      const segLength = Math.hypot(dir.x, dir.y);
+      if (segLength === 0) return;
+      const step = (speed * delta) / segLength;
+      enemy.progress += step;
+      if (enemy.progress >= 1) {
+        enemy.pathIndex += 1;
+        enemy.progress = 0;
+        if (enemy.pathIndex >= path.length - 1) {
+          enemy.reachedEnd = true;
+        }
       }
-      damageTexts.push({
-        x: hit.x,
-        y: hit.y,
-        elapsed: 0,
-        duration: 0.7,
-        text: `-${Math.round(damageAmount)}`,
-        color: hit.elite ? "#ffb347" : "#f4f7ff",
-      });
-      proj.life = 0;
-    }
-  });
-  projectiles = projectiles.filter((p) => p.life > 0);
+      const base = path[enemy.pathIndex];
+      const next = path[Math.min(path.length - 1, enemy.pathIndex + 1)];
+      enemy.x = lerp(base.x, next.x, enemy.progress);
+      enemy.y = lerp(base.y, next.y, enemy.progress);
+    });
 
-  damageTexts.forEach((text) => {
-    text.elapsed += delta;
-    text.y -= delta * 32;
-  });
-  damageTexts = damageTexts.filter((text) => text.elapsed < text.duration);
+    enemies = enemies.filter((enemy) => {
+      if (enemy.reachedEnd) {
+        state.health -= 1;
+        appendLog("Egy egység áttört a védelmen!");
+        updateStats();
+        return false;
+      }
+      if (enemy.hp <= 0) {
+        state.money += enemy.reward;
+        updateStats();
+        return false;
+      }
+      return true;
+    });
+
+    towers.forEach((tower) => {
+      tower.cooldown -= delta;
+      const target = enemies
+        .filter((e) => distance(e, tower) <= tower.range)
+        .sort((a, b) => b.pathIndex - a.pathIndex || b.progress - a.progress)[0];
+      if (target && tower.cooldown <= 0) {
+        shoot(tower, target);
+      }
+    });
+
+    projectiles.forEach((proj) => {
+      proj.x += proj.vx * delta;
+      proj.y += proj.vy * delta;
+      proj.life -= delta;
+      const hit = enemies.find((e) => distance(e, proj) < e.radius);
+      if (hit) {
+        const damageAmount = Math.min(proj.damage, hit.hp);
+        hit.hp -= proj.damage;
+        if (proj.slow) {
+          hit.slowTimer = proj.slowTime;
+          hit.slowStrength = Math.min(proj.slow, 0.6);
+        }
+        damageTexts.push({
+          x: hit.x,
+          y: hit.y,
+          elapsed: 0,
+          duration: 0.7,
+          text: `-${Math.round(damageAmount)}`,
+          color: hit.elite ? "#ffb347" : "#f4f7ff",
+        });
+        proj.life = 0;
+      }
+    });
+    projectiles = projectiles.filter((p) => p.life > 0);
+
+    damageTexts.forEach((text) => {
+      text.elapsed += delta;
+      text.y -= delta * 32;
+    });
+    damageTexts = damageTexts.filter((text) => text.elapsed < text.duration);
+  }
 
   if (!waveFinished && !waveSpawning && waveSpawnTotal > 0 && enemies.length === 0) {
     running = false;
@@ -898,10 +918,10 @@ function update(delta) {
     const nextWave = Math.min(state.wave + (waveSpawnTotal > 0 ? 2 : 1), waves.length);
     const lastWaveDone = state.wave >= waves.length - 1;
     if (lastWaveDone) {
-      setGameState(GAME_STATES.VICTORY);
+      setGamePhase(GAME_PHASES.VICTORY);
     } else {
-      setGameState(GAME_STATES.WAVE_END);
-      showWaveOverlay(nextWave, false);
+      setGamePhase(GAME_PHASES.BETWEEN);
+      showBetweenOverlay();
     }
   }
 
@@ -911,7 +931,7 @@ function update(delta) {
     appendLog("Elestél. Nyomd meg a Reset gombot az újrakezdéshez.");
     projectiles = [];
     damageTexts = [];
-    setGameState(GAME_STATES.GAME_OVER);
+    setGamePhase(GAME_PHASES.GAME_OVER);
   }
 
   const lastWaveCompleted = waveFinished && waveSpawnTotal > 0 && state.wave >= waves.length - 1;
@@ -921,7 +941,7 @@ function update(delta) {
     projectiles = [];
     damageTexts = [];
     setSpeed(1);
-    setGameState(GAME_STATES.VICTORY);
+    setGamePhase(GAME_PHASES.VICTORY);
     appendLog("Minden hullámot visszavertél – nyomj Resetet az újrakezdéshez!");
   }
 }
@@ -1255,6 +1275,14 @@ function init() {
   if (overlayVictoryReset) {
     overlayVictoryReset.addEventListener("click", () => {
       resetGame();
+    });
+  }
+  if (overlayBetween) {
+    overlayBetween.addEventListener("click", () => {
+      if (gamePhase === GAME_PHASES.BETWEEN) {
+        hideBetweenOverlay();
+        startNextWave();
+      }
     });
   }
   if (overlayLoading) {
