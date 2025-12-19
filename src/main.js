@@ -18,13 +18,15 @@ const overlayWaveStart = document.getElementById("overlay-wave-start");
 const overlayGameOver = document.getElementById("overlay-gameover");
 const overlayGameOverText = document.getElementById("overlay-gameover-text");
 const overlayGameOverReset = document.getElementById("overlay-gameover-reset");
+const overlayVictory = document.getElementById("overlay-victory");
+const overlayVictoryReset = document.getElementById("overlay-victory-reset");
 const towerDetailEl = document.getElementById("tower-detail");
 const versionEl = document.getElementById("version");
 const towerActionsEl = document.getElementById("tower-actions");
 const settingsListEl = document.getElementById("settings-list");
 const settingsStatusEl = document.getElementById("settings-status");
 
-const GAME_VERSION = "v0.5.7";
+const GAME_VERSION = "v0.5.8";
 const CANVAS_WIDTH = 960;
 const CANVAS_HEIGHT = 640;
 const gridSize = 40;
@@ -150,7 +152,17 @@ let waveSpawned = 0;
 let waveSpawnTotal = 0;
 let waveSpawning = false;
 let waveFinished = true;
-let gameState = "loading"; // loading | ready | playing | gameover
+const GAME_STATES = {
+  LOADING: "LOADING",
+  IDLE: "IDLE",
+  RUNNING: "RUNNING",
+  WAVE_END: "WAVE_END",
+  VICTORY: "VICTORY",
+  GAME_OVER: "GAME_OVER",
+  PAUSED: "PAUSED",
+};
+
+let gameState = GAME_STATES.LOADING;
 
 const KEY_ACTIONS = {
   pause: "P",
@@ -205,7 +217,7 @@ function resetGame() {
   updateTowerActions();
   updateSpeedControls();
   updateTowerDetailPanel();
-  setGameState("ready");
+  setGameState(GAME_STATES.LOADING);
   draw();
 }
 
@@ -342,6 +354,12 @@ function showWaveOverlay(nextWave, isFinal = false) {
 
 function hideWaveOverlay() {
   hideOverlay(overlayWave);
+}
+
+function enterIdleFromLoading() {
+  if (gameState !== GAME_STATES.LOADING) return;
+  hideOverlay(overlayLoading);
+  setGameState(GAME_STATES.IDLE);
 }
 
 function showModal(modal) {
@@ -496,25 +514,49 @@ function togglePause() {
 function setGameState(newState) {
   gameState = newState;
   switch (newState) {
-    case "loading":
+    case GAME_STATES.LOADING:
       showOverlay(overlayLoading);
       hideWaveOverlay();
       hideOverlay(overlayGameOver);
+      hideOverlay(overlayVictory);
       break;
-    case "ready":
+    case GAME_STATES.IDLE:
       hideOverlay(overlayLoading);
       hideWaveOverlay();
       hideOverlay(overlayGameOver);
+      hideOverlay(overlayVictory);
       running = false;
       isPaused = false;
       break;
-    case "playing":
+    case GAME_STATES.RUNNING:
       hideWaveOverlay();
       hideOverlay(overlayGameOver);
+      hideOverlay(overlayVictory);
       running = true;
       isPaused = false;
       break;
-    case "gameover":
+    case GAME_STATES.PAUSED:
+      running = true;
+      isPaused = true;
+      break;
+    case GAME_STATES.WAVE_END: {
+      running = false;
+      isPaused = false;
+      const nextWave = Math.min(state.wave + (waveSpawnTotal > 0 ? 2 : 1), waves.length);
+      const lastWaveCompleted = waveFinished && waveSpawnTotal > 0 && state.wave >= waves.length - 1;
+      showWaveOverlay(nextWave, lastWaveCompleted);
+      hideOverlay(overlayGameOver);
+      hideOverlay(overlayVictory);
+      break;
+    }
+    case GAME_STATES.VICTORY:
+      running = false;
+      isPaused = false;
+      hideWaveOverlay();
+      hideOverlay(overlayGameOver);
+      showOverlay(overlayVictory);
+      break;
+    case GAME_STATES.GAME_OVER:
       running = false;
       isPaused = false;
       if (overlayGameOverText) {
@@ -535,18 +577,24 @@ function updateControlState() {
   const isPlaying = gameState === "playing" && !isPaused;
   if (controlBtn) {
     controlBtn.textContent = isPlaying ? "⏸" : "▶";
-    controlBtn.disabled = gameState === "gameover" || lastWaveCompleted || gameState === "loading";
+    controlBtn.disabled =
+      gameState === GAME_STATES.GAME_OVER ||
+      gameState === GAME_STATES.VICTORY ||
+      gameState === GAME_STATES.LOADING ||
+      lastWaveCompleted;
     controlBtn.classList.toggle("active", isPlaying);
   }
   if (overlayWaveStart) {
     overlayWaveStart.disabled = controlBtn ? controlBtn.disabled : lastWaveCompleted;
   }
   if (nextWaveLabel) {
-    if (gameState === "gameover") {
+    if (gameState === GAME_STATES.GAME_OVER) {
       nextWaveLabel.textContent = "GAME OVER";
+    } else if (gameState === GAME_STATES.VICTORY) {
+      nextWaveLabel.textContent = "GYŐZELEM";
     } else if (lastWaveCompleted) {
       nextWaveLabel.textContent = "Minden hullám teljesítve";
-    } else if (gameState === "loading") {
+    } else if (gameState === GAME_STATES.LOADING) {
       nextWaveLabel.textContent = "Betöltés...";
     } else {
       const nextIndex = waveFinished && hasStarted ? state.wave + 1 : state.wave;
@@ -565,24 +613,24 @@ function startNextWave() {
     state.wave += 1;
   }
   waveFinished = false;
-  setGameState("playing");
+  setGameState(GAME_STATES.RUNNING);
   spawnWave();
 }
 
 function handleControlClick() {
   const lastWaveCompleted = waveFinished && waveSpawnTotal > 0 && state.wave >= waves.length - 1;
   if (lastWaveCompleted) return;
-  if (running && !isPaused && gameState === "playing") {
-    togglePause();
+  if (gameState === GAME_STATES.RUNNING && !isPaused) {
+    setGameState(GAME_STATES.PAUSED);
     updateControlState();
     return;
   }
-  if (isPaused && gameState === "playing") {
-    togglePause();
+  if (gameState === GAME_STATES.PAUSED) {
+    setGameState(GAME_STATES.RUNNING);
     updateControlState();
     return;
   }
-  if (!running || waveFinished || gameState === "ready") {
+  if (gameState === GAME_STATES.IDLE || waveFinished) {
     startNextWave();
     return;
   }
@@ -673,6 +721,11 @@ function handleKeyDown(evt) {
   if (rebindTarget) {
     evt.preventDefault();
     handleRebind(evt.key);
+    return;
+  }
+  if (gameState === GAME_STATES.LOADING && (evt.key === "Enter" || evt.key === " ")) {
+    evt.preventDefault();
+    enterIdleFromLoading();
     return;
   }
   if (settingsModal?.classList.contains("active")) {
@@ -839,29 +892,36 @@ function update(delta) {
     running = false;
     isPaused = false;
     waveFinished = true;
+    projectiles = [];
+    damageTexts = [];
+    setSpeed(1);
     const nextWave = Math.min(state.wave + (waveSpawnTotal > 0 ? 2 : 1), waves.length);
     const lastWaveDone = state.wave >= waves.length - 1;
     if (lastWaveDone) {
-      showWaveOverlay(nextWave, true);
+      setGameState(GAME_STATES.VICTORY);
     } else {
+      setGameState(GAME_STATES.WAVE_END);
       showWaveOverlay(nextWave, false);
     }
-    setGameState("ready");
   }
 
   if (state.health <= 0) {
     running = false;
     waveFinished = true;
     appendLog("Elestél. Nyomd meg a Reset gombot az újrakezdéshez.");
-    setGameState("gameover");
+    projectiles = [];
+    damageTexts = [];
+    setGameState(GAME_STATES.GAME_OVER);
   }
 
   const lastWaveCompleted = waveFinished && waveSpawnTotal > 0 && state.wave >= waves.length - 1;
   if (lastWaveCompleted && enemies.length === 0) {
     running = false;
     waveFinished = true;
-    showWaveOverlay(state.wave + 1, true);
-    setGameState("ready");
+    projectiles = [];
+    damageTexts = [];
+    setSpeed(1);
+    setGameState(GAME_STATES.VICTORY);
     appendLog("Minden hullámot visszavertél – nyomj Resetet az újrakezdéshez!");
   }
 }
@@ -1162,7 +1222,6 @@ function init() {
   versionEl.textContent = GAME_VERSION;
   buildTowerGrid();
   resetGame();
-  hideOverlay(overlayLoading);
   canvas.addEventListener("click", handleCanvasClick);
   canvas.addEventListener("mousemove", handleCanvasMouseMove);
   canvas.addEventListener("mouseleave", handleCanvasMouseLeave);
@@ -1192,6 +1251,14 @@ function init() {
     overlayGameOverReset.addEventListener("click", () => {
       resetGame();
     });
+  }
+  if (overlayVictoryReset) {
+    overlayVictoryReset.addEventListener("click", () => {
+      resetGame();
+    });
+  }
+  if (overlayLoading) {
+    overlayLoading.addEventListener("click", enterIdleFromLoading);
   }
   if (openSettingsBtn) openSettingsBtn.addEventListener("click", () => showModal(settingsModal));
   if (closeSettingsModalBtn) closeSettingsModalBtn.addEventListener("click", () => hideModal(settingsModal));
