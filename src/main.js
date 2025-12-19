@@ -8,12 +8,19 @@ const nextWaveBtn = document.getElementById("next-wave");
 const resetBtn = document.getElementById("reset");
 const pauseBtn = document.getElementById("pause-toggle");
 const speedButtons = document.querySelectorAll("[data-speed]");
+const openTowersBtn = document.getElementById("open-towers");
+const openSettingsBtn = document.getElementById("open-settings");
+const towerModal = document.getElementById("tower-modal");
+const settingsModal = document.getElementById("settings-modal");
+const closeTowerModalBtn = document.getElementById("close-tower-modal");
+const closeSettingsModalBtn = document.getElementById("close-settings-modal");
+const towerDetailEl = document.getElementById("tower-detail");
 const versionEl = document.getElementById("version");
 const towerActionsEl = document.getElementById("tower-actions");
 const settingsListEl = document.getElementById("settings-list");
 const settingsStatusEl = document.getElementById("settings-status");
 
-const GAME_VERSION = "v0.5.0";
+const GAME_VERSION = "v0.5.1";
 const CANVAS_WIDTH = 960;
 const CANVAS_HEIGHT = 640;
 const gridSize = 40;
@@ -287,6 +294,18 @@ function clearSelectionAndPlacement() {
   draw();
 }
 
+function showModal(modal) {
+  if (!modal) return;
+  modal.classList.add("active");
+  modal.setAttribute("aria-hidden", "false");
+}
+
+function hideModal(modal) {
+  if (!modal) return;
+  modal.classList.remove("active");
+  modal.setAttribute("aria-hidden", "true");
+}
+
 function handleCanvasClick(evt) {
   const cell = getCellFromEvent(evt);
 
@@ -348,8 +367,10 @@ function setActiveTowerByIndex(index) {
   selectedTower = null;
   hoverCell = null;
   upgradePreviewRange = null;
+  renderTowerDetail(towerTypes[index]);
   updateTowerGridHighlight();
   updateTowerActions();
+  hideModal(towerModal);
 }
 
 function updateTowerGridHighlight() {
@@ -513,6 +534,13 @@ function handleKeyDown(evt) {
     handleRebind(evt.key);
     return;
   }
+  if (towerModal?.classList.contains("active") || settingsModal?.classList.contains("active")) {
+    if (evt.key === "Escape") {
+      hideModal(towerModal);
+      hideModal(settingsModal);
+    }
+    return;
+  }
   const binding = findActionForKey(evt.key);
   if (binding) {
     evt.preventDefault();
@@ -546,6 +574,33 @@ function renderSettings() {
       }
     };
   });
+}
+
+function renderTowerDetail(tower) {
+  if (!towerDetailEl) return;
+  if (!tower) {
+    towerDetailEl.innerHTML = '<div class="tower-detail__placeholder">Válassz egy tornyot a részletekhez.</div>';
+    return;
+  }
+  towerDetailEl.innerHTML = `
+    <div class="tower-detail__badge" style="color:${tower.color}">● ${tower.name}</div>
+    <h4 class="tower-detail__title">${tower.name}</h4>
+    <div class="tower-detail__meta">${tower.description}</div>
+    <div class="tower-detail__stats">
+      <span>Ár: <strong>${tower.cost} kredit</strong></span>
+      <span>DMG: ${tower.damage}</span>
+      <span>Hatótáv: ${tower.range}</span>
+      <span>Tűzgyorsaság: ${tower.fireRate.toFixed(1)}/s</span>
+    </div>
+    <button class="upgrade-btn" data-select-tower="${tower.id}">Választ</button>
+  `;
+  const selectBtn = towerDetailEl.querySelector("[data-select-tower]");
+  if (selectBtn) {
+    selectBtn.onclick = () => {
+      setActiveTowerByIndex(towerTypes.findIndex((t) => t.id === tower.id));
+      hideModal(towerModal);
+    };
+  }
 }
 
 function update(delta) {
@@ -853,10 +908,11 @@ function updateTowerActions() {
   if (!towerActionsEl) return;
   if (!selectedTower) {
     upgradePreviewRange = null;
-    towerActionsEl.innerHTML =
-      '<div class="tower-actions__hint">Nincs kiválasztott torony. Kattints egy lerakott toronyra a fejlesztéshez.</div>';
+    towerActionsEl.classList.add("tower-actions--hidden");
+    towerActionsEl.innerHTML = "";
     return;
   }
+  towerActionsEl.classList.remove("tower-actions--hidden");
   const towerLevel = selectedTower.level || 1;
   const upgradeCost = getUpgradeCost(selectedTower);
   const atMax = !canUpgrade(selectedTower);
@@ -898,22 +954,18 @@ function buildTowerGrid() {
     card.className = "tower-card";
     card.dataset.towerId = tower.id;
     card.innerHTML = `
+      <div class="tower-icon" style="color:${tower.color}">●</div>
       <h3>${tower.name}</h3>
-      <div class="tower-meta">${tower.description}</div>
-      <div class="tower-stats">
-        <span class="tower-cost">${tower.cost} kredit</span>
-        <span>DMG: ${tower.damage}</span>
-        <span>Hatótáv: ${tower.range}</span>
-        <span>Tűzgyorsaság: ${tower.fireRate.toFixed(1)}/s</span>
-      </div>
     `;
     card.onclick = () => {
-      setActiveTowerByIndex(towerTypes.findIndex((t) => t.id === tower.id));
-      updateTowerGridHighlight();
+      renderTowerDetail(tower);
+      Array.from(towerGrid.children).forEach((c) => c.classList.remove("active"));
+      card.classList.add("active");
     };
     if (activeTower && tower.id === activeTower.id) card.classList.add("active");
     towerGrid.appendChild(card);
   });
+  renderTowerDetail(null);
 }
 
 function startGame() {
@@ -964,6 +1016,12 @@ function init() {
       setSpeed(Number(btn.dataset.speed));
     });
   });
+  if (openTowersBtn) openTowersBtn.addEventListener("click", () => showModal(towerModal));
+  if (openSettingsBtn) openSettingsBtn.addEventListener("click", () => showModal(settingsModal));
+  if (closeTowerModalBtn) closeTowerModalBtn.addEventListener("click", () => hideModal(towerModal));
+  if (closeSettingsModalBtn) closeSettingsModalBtn.addEventListener("click", () => hideModal(settingsModal));
+  towerModal?.querySelector(".modal__backdrop")?.addEventListener("click", () => hideModal(towerModal));
+  settingsModal?.querySelector(".modal__backdrop")?.addEventListener("click", () => hideModal(settingsModal));
   renderSettings();
   updateSpeedControls();
   animate();

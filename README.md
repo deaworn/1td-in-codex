@@ -5,8 +5,8 @@ Egyszerű, böngészőben futó tower defense demó. A pályát canvas rajzolja 
 ## Futás
 1. Nyisd meg a `index.html` fájlt a böngésződben (nem igényel buildet vagy külső csomagokat).
 2. A **Start** gomb az első hullámot indítja el, a **Következő hullám** gombbal léptetheted a következőket.
-3. A jobb oldali listából válassz tornyot, majd kattints a pályán egy szabad rácsra a lerakáshoz.
-4. Billentyűk: **P** (pause), **+/-** (sebesség), **S/Enter** (start), **N** (következő hullám), **R** (reset), **1-3** (torony választása), **ESC** (kijelölés törlése). A beállítások panelen saját kiosztás is megadható.
+3. A felső ikonokkal nyisd meg a **Tornyok** modált (ikon + név, részletek kattintásra) vagy a **Beállítások** modált (pause, sebesség, start/next/reset, billentyűk).
+4. Billentyűk: **P** (pause), **+/-** (sebesség), **S/Enter** (start), **N** (következő hullám), **R** (reset), **1-3** (torony választása), **ESC** (kijelölés törlése vagy modál zárása). A beállítások panelen saját kiosztás is megadható.
 
 ## Főbb adatok
 - Hullámok: új ellenségtípusok a felderítőtől a páncélozott rajokig és egy záró "Gépintelligencia" főellenség.
