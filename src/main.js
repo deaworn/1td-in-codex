@@ -27,7 +27,7 @@ const towerActionsEl = document.getElementById("tower-actions");
 const settingsListEl = document.getElementById("settings-list");
 const settingsStatusEl = document.getElementById("settings-status");
 
-const GAME_VERSION = "v0.5.9";
+const GAME_VERSION = "v0.5.10";
 const CANVAS_WIDTH = 960;
 const CANVAS_HEIGHT = 640;
 const gridSize = 40;
@@ -633,7 +633,6 @@ function updateControlState() {
       gamePhase === GAME_PHASES.GAME_OVER ||
       gamePhase === GAME_PHASES.VICTORY ||
       gamePhase === GAME_PHASES.LOADING ||
-      gamePhase === GAME_PHASES.BETWEEN ||
       lastWaveCompleted;
     controlBtn.classList.toggle("active", isPlaying);
   }
@@ -858,6 +857,27 @@ function updateTowerDetailPanel() {
   }
 }
 
+function handleWaveCleared() {
+  running = false;
+  isPaused = false;
+  waveFinished = true;
+  projectiles = [];
+  damageTexts = [];
+  setSpeed(1);
+  const lastWaveDone = state.wave >= waves.length - 1;
+  if (lastWaveDone) {
+    setGameState(GAME_STATES.READY);
+    setGamePhase(GAME_PHASES.VICTORY);
+    appendLog("Minden hullámot visszavertél – nyomj Resetet az újrakezdéshez!");
+    return;
+  }
+  setGameState(GAME_STATES.READY);
+  setGamePhase(GAME_PHASES.BUILD);
+  const nextWaveNumber = Math.min(state.wave + 2, waves.length);
+  showWaveOverlay(nextWaveNumber, false);
+  appendLog("Hullám teljesítve. Nyomd meg a Start gombot a következőhöz.");
+}
+
 function update(delta) {
   state.time += delta;
 
@@ -949,21 +969,7 @@ function update(delta) {
   }
 
   if (!waveFinished && !waveSpawning && waveSpawnTotal > 0 && enemies.length === 0) {
-    running = false;
-    isPaused = false;
-    waveFinished = true;
-    projectiles = [];
-    damageTexts = [];
-    setSpeed(1);
-    setGameState(GAME_STATES.READY);
-    const nextWave = Math.min(state.wave + (waveSpawnTotal > 0 ? 2 : 1), waves.length);
-    const lastWaveDone = state.wave >= waves.length - 1;
-    if (lastWaveDone) {
-      setGamePhase(GAME_PHASES.VICTORY);
-    } else {
-      setGamePhase(GAME_PHASES.BETWEEN);
-      showBetweenOverlay();
-    }
+    handleWaveCleared();
   }
 
   if (state.health <= 0) {
@@ -974,17 +980,6 @@ function update(delta) {
     damageTexts = [];
     setGameState(GAME_STATES.GAME_OVER);
     setGamePhase(GAME_PHASES.GAME_OVER);
-  }
-
-  const lastWaveCompleted = waveFinished && waveSpawnTotal > 0 && state.wave >= waves.length - 1;
-  if (lastWaveCompleted && enemies.length === 0) {
-    running = false;
-    waveFinished = true;
-    projectiles = [];
-    damageTexts = [];
-    setSpeed(1);
-    setGamePhase(GAME_PHASES.VICTORY);
-    appendLog("Minden hullámot visszavertél – nyomj Resetet az újrakezdéshez!");
   }
 }
 
@@ -1272,11 +1267,11 @@ function startGame() {
 }
 
 function nextWave() {
-  if (waveFinished || (!running && enemies.length === 0)) {
-    startNextWave();
-  } else {
-    appendLog("Várd meg, amíg az aktuális hullám elfogy.");
+  if (gameState === GAME_STATES.READY && waveFinished) {
+    handleControlClick();
+    return;
   }
+  appendLog("Várd meg, amíg az aktuális hullám elfogy.");
 }
 
 function init() {
@@ -1305,7 +1300,7 @@ function init() {
   if (overlayWaveStart) {
     overlayWaveStart.addEventListener("click", () => {
       hideOverlay(overlayWave);
-      startNextWave();
+      handleControlClick();
     });
   }
   if (overlayGameOverReset) {
@@ -1322,7 +1317,6 @@ function init() {
     overlayBetween.addEventListener("click", () => {
       if (gamePhase === GAME_PHASES.BETWEEN) {
         hideBetweenOverlay();
-        startNextWave();
       }
     });
   }
