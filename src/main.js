@@ -153,7 +153,7 @@ let waveSpawned = 0;
 let waveSpawnTotal = 0;
 let waveSpawning = false;
 let waveFinished = true;
-const GAME_PHASES = {
+const GAME_PHASES = Object.freeze({
   LOADING: "loading",
   BUILD: "build",
   WAVE: "wave",
@@ -161,14 +161,14 @@ const GAME_PHASES = {
   VICTORY: "victory",
   GAME_OVER: "gameOver",
   PAUSED: "paused",
-};
+});
 
-const GAME_STATES = {
+const GAME_STATES = Object.freeze({
   READY: "READY",
   RUNNING: "RUNNING",
   PAUSED: "PAUSED",
   GAME_OVER: "GAME_OVER",
-};
+});
 
 let gamePhase = GAME_PHASES.LOADING;
 let gameState = GAME_STATES.READY;
