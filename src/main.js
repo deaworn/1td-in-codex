@@ -27,7 +27,7 @@ const towerActionsEl = document.getElementById("tower-actions");
 const settingsListEl = document.getElementById("settings-list");
 const settingsStatusEl = document.getElementById("settings-status");
 
-const GAME_VERSION = "v0.5.10";
+const GAME_VERSION = "v0.5.9";
 const CANVAS_WIDTH = 960;
 const CANVAS_HEIGHT = 640;
 const gridSize = 40;
@@ -1268,7 +1268,8 @@ function startGame() {
 
 function nextWave() {
   if (gameState === GAME_STATES.READY && waveFinished) {
-    handleControlClick();
+    hideWaveOverlay();
+    appendLog("Nyomd meg a Start gombot a következő hullám indításához.");
     return;
   }
   appendLog("Várd meg, amíg az aktuális hullám elfogy.");
@@ -1297,10 +1298,15 @@ function init() {
       setSpeed(next);
     });
   }
+  if (overlayWave) {
+    overlayWave.addEventListener("click", () => {
+      hideWaveOverlay();
+    });
+  }
   if (overlayWaveStart) {
-    overlayWaveStart.addEventListener("click", () => {
-      hideOverlay(overlayWave);
-      handleControlClick();
+    overlayWaveStart.addEventListener("click", (event) => {
+      event.stopPropagation();
+      hideWaveOverlay();
     });
   }
   if (overlayGameOverReset) {
